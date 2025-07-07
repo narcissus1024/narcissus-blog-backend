@@ -17,6 +17,11 @@ func ImageBytes2WebpBytes(input io.Reader, quality float32) ([]byte, error) {
 		return nil, err
 	}
 
+	// 如果图片宽度或高度超过2000像素，则进行缩放
+	if img.Bounds().Dx() >= 2000 || img.Bounds().Dy() >= 2000 {
+		img = imaging.Resize(img, 1920, 0, imaging.Lanczos)
+	}
+
 	webpBytes, err := webp.EncodeRGBA(img, quality)
 	if err != nil {
 		return nil, err

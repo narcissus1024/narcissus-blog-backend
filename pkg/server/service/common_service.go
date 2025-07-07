@@ -49,7 +49,7 @@ func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeade
 	}
 	defer f.Close()
 
-	webpImageByte, convertImgErr := utils.ImageBytes2WebpBytes(f, 85)
+	webpImageByte, convertImgErr := utils.ImageBytes2WebpBytes(f, 90)
 	if convertImgErr != nil {
 		zap.L().Error("Failed to convert image to webp", zap.Error(convertImgErr))
 		return resp, cerr.NewSysError()
