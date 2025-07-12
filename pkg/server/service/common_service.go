@@ -33,7 +33,7 @@ var (
 type commoneService struct {
 }
 
-func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeader) (vo.UploadImageVo, *cerr.Error) {
+func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeader) (vo.UploadImageVo, error) {
 	var resp vo.UploadImageVo
 
 	if err := checkImageFile(file); err != nil {
@@ -45,14 +45,14 @@ func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeade
 	f, openErr := file.Open()
 	if openErr != nil {
 		zap.L().Error("Failed to open image file", zap.Error(openErr))
-		return resp, cerr.NewSysError()
+		return resp, openErr
 	}
 	defer f.Close()
 
 	webpImageByte, convertImgErr := utils.ImageBytes2WebpBytes(f, 90)
 	if convertImgErr != nil {
 		zap.L().Error("Failed to convert image to webp", zap.Error(convertImgErr))
-		return resp, cerr.NewSysError()
+		return resp, convertImgErr
 	}
 
 	// 存储图片
@@ -64,35 +64,35 @@ func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeade
 
 	if err := utils.SaveFileBytes(webpImageByte, savePath); err != nil {
 		zap.L().Error("Failed to save image file", zap.Error(err))
-		return resp, cerr.NewSysError()
+		return resp, err
 	}
 
 	resp.ImgUrl = config.Config.App.ImgProxyURL + "/" + imgRelativePath
 	return resp, nil
 }
 
-func (s *commoneService) GetRASPublicKey(ctx *gin.Context) (vo.RASPublicKeyVo, *cerr.Error) {
+func (s *commoneService) GetRASPublicKey(ctx *gin.Context) (vo.RASPublicKeyVo, error) {
 	var resp vo.RASPublicKeyVo
 	publicKey, err := encrypt.RSAReadPublicKey(config.Config.App.PublicKeyDir)
 	if err != nil {
 		zap.L().Error("Failed to read public key", zap.Error(err))
-		return resp, cerr.NewSysError()
+		return resp, err
 	}
 	publicKeyPEM, err := encrypt.RSAPublicKey2Mem(publicKey)
 	if err != nil {
 		zap.L().Error("Failed to convert public key to PEM", zap.Error(err))
-		return resp, cerr.NewSysError()
+		return resp, err
 	}
 	resp.PublicKey = string(publicKeyPEM)
 	return resp, nil
 }
 
-func (s *commoneService) PublicKeyEncrypt(req dto.PublicKeyEncrypDto) (vo.PublicKeyEncryptVo, *cerr.Error) {
+func (s *commoneService) PublicKeyEncrypt(req dto.PublicKeyEncrypDto) (vo.PublicKeyEncryptVo, error) {
 	var resp vo.PublicKeyEncryptVo
 	encryptedData, err := encrypt.RSAEncryptWithBase64([]byte(req.Data), config.Config.App.PublicKeyDir)
 	if err != nil {
 		zap.L().Error("Failed to encrypt data with public key", zap.Error(err))
-		return resp, cerr.NewSysError()
+		return resp, err
 	}
 	resp.EncryptedData = string(encryptedData)
 	return resp, nil

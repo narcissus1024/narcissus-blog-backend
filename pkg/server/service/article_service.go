@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -22,7 +21,7 @@ var ArticleService = new(articleService)
 type articleService struct {
 }
 
-func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest dto.ArticleListDto) (*vo.ArticleListVo, *cerr.Error) {
+func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest dto.ArticleListDto) (*vo.ArticleListVo, error) {
 	var articleListResponse vo.ArticleListVo
 	var articleList []model.ArticleDetail
 	var totalArticle int64
@@ -45,12 +44,8 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return nil, customErr
-		}
 		zap.L().Error("Failed to run db transaction", zap.Error(txErr))
-		return nil, cerr.NewSysError()
+		return nil, txErr
 	}
 
 	// format response
@@ -99,7 +94,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 	return &articleListResponse, nil
 }
 
-func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto) *cerr.Error {
+func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto) error {
 
 	now := time.Now()
 	articleModel := &model.Article{
@@ -124,7 +119,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 			categoryId, err := CategoryService.GetCategoryIDByName(c, articleDto.Category)
 			if err != nil {
 				zap.L().Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
-				return cerr.NewSysError()
+				return err
 			}
 			if categoryId < 0 {
 				zap.L().Error("Category not exist, category name: ", zap.String("category", articleDto.Category))
@@ -134,7 +129,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 		}
 
 		if len(articleDto.Tags) > 0 {
-			var listTagErr *cerr.Error
+			var listTagErr error
 			tagIdList, listTagErr = TagService.ListTagIdByNameArr(c, dto.TagDto{NameList: articleDto.Tags})
 			if listTagErr != nil {
 				zap.L().Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", articleDto.Tags))
@@ -182,18 +177,14 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 	})
 
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return customErr
-		}
 		zap.L().Error("Failed to execute transaction", zap.Error(txErr))
-		return cerr.NewSysError()
+		return txErr
 	}
 
 	return nil
 }
 
-func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto) *cerr.Error {
+func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto) error {
 	if articleDto.ID == nil || *articleDto.ID <= 0 {
 		return cerr.NewParamError("文章id无效")
 	}
@@ -307,23 +298,19 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 	})
 	if txErr != nil {
 		zap.L().Error("Failed to update article", zap.Error(txErr))
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return customErr
-		}
-		return cerr.NewSysError()
+		return txErr
 	}
 	return nil
 }
 
-func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.ArticleDetailVo, *cerr.Error) {
+func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.ArticleDetailVo, error) {
 	if id <= 0 {
 		return nil, cerr.NewParamError("id无效")
 	}
 	articleDetail, err := dao.ArticleDao.QueryArticleDetail(c, id)
 	if err != nil {
 		zap.L().Error("Failed to query article detail", zap.Error(err), zap.Int64("article id", id))
-		return nil, cerr.NewSysError()
+		return nil, err
 	}
 	if articleDetail == nil {
 		zap.L().Error("Article not exist", zap.Int64("article id", id))
@@ -359,7 +346,7 @@ func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.Article
 	return &resp, nil
 }
 
-func (s *articleService) DeleteArticleList(c *gin.Context, deleteDto dto.ArticleDeleteDto) *cerr.Error {
+func (s *articleService) DeleteArticleList(c *gin.Context, deleteDto dto.ArticleDeleteDto) error {
 	txErr := mysql.RunDBTransaction(c, func() error {
 		// 删除文章
 		if err := dao.ArticleDao.DeleteArticleByIDs(c, deleteDto.IDs); err != nil {
@@ -379,12 +366,8 @@ func (s *articleService) DeleteArticleList(c *gin.Context, deleteDto dto.Article
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return customErr
-		}
 		zap.L().Error("Failed to delete article list", zap.Error(txErr))
-		return cerr.NewSysError()
+		return txErr
 	}
 	return nil
 }

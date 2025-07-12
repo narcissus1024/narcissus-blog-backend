@@ -23,7 +23,7 @@ var UserServiceInstance = new(userService)
 type userService struct {
 }
 
-func (s *userService) SignIn(signIn dto.SignIn) *cerr.Error {
+func (s *userService) SignIn(signIn dto.SignIn) error {
 	if err := signIn.Validate(); err != nil {
 		return cerr.NewParamError(err.Error())
 	}
@@ -31,7 +31,7 @@ func (s *userService) SignIn(signIn dto.SignIn) *cerr.Error {
 	existUser, queryErr := dao.UserDaoInstance.QueryByUsername(signIn.Username)
 	if queryErr != nil {
 		zap.L().Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", signIn.Username))
-		return cerr.NewSysError()
+		return queryErr
 	}
 
 	if existUser != nil {
@@ -42,13 +42,13 @@ func (s *userService) SignIn(signIn dto.SignIn) *cerr.Error {
 	decryptPasswd, decryptErr := encrypt.RSADecryptWithBase64([]byte(signIn.Password), config.Config.App.PrivateKeyDir)
 	if decryptErr != nil {
 		zap.L().Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", signIn.Username))
-		return cerr.NewSysError()
+		return decryptErr
 	}
 
 	hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(decryptPasswd), bcrypt.DefaultCost)
 	if hashErr != nil {
 		zap.L().Error("Failed to hash password", zap.Error(hashErr), zap.String("username", signIn.Username))
-		return cerr.NewSysError()
+		return hashErr
 	}
 
 	now := time.Now()
@@ -65,17 +65,17 @@ func (s *userService) SignIn(signIn dto.SignIn) *cerr.Error {
 
 	if err := dao.UserDaoInstance.InsertUser(&user); err != nil {
 		zap.L().Error("Failed to insert user", zap.Error(err), zap.String("username", signIn.Username))
-		return cerr.NewSysError()
+		return err
 	}
 	return nil
 }
 
-func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, *cerr.Error) {
+func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, error) {
 	// 用户验证
 	user, queryErr := dao.UserDaoInstance.QueryByUsername(loginRequest.Username)
 	if queryErr != nil {
 		zap.L().Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", loginRequest.Username))
-		return nil, cerr.NewSysError()
+		return nil, queryErr
 	}
 
 	if user == nil {
@@ -86,7 +86,7 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, *cerr.Error
 	decryptPasswd, decryptErr := encrypt.RSADecryptWithBase64([]byte(loginRequest.Password), config.Config.App.PrivateKeyDir)
 	if decryptErr != nil {
 		zap.L().Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", loginRequest.Username))
-		return nil, cerr.NewSysError()
+		return nil, decryptErr
 	}
 	// 密码验证
 	if compareErr := bcrypt.CompareHashAndPassword([]byte(user.Password), decryptPasswd); compareErr != nil {
@@ -97,12 +97,12 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, *cerr.Error
 	accessToken, genAccessTokenErr := jwt.GenAccessToken(jwt.DefaultIssuse, user.ID)
 	if genAccessTokenErr != nil {
 		zap.L().Error("Failed to generate access token", zap.Error(genAccessTokenErr), zap.String("username", loginRequest.Username))
-		return nil, cerr.NewSysError()
+		return nil, genAccessTokenErr
 	}
 	refreshToken, genRefreshTokenErr := jwt.GenRefreshToken(jwt.DefaultIssuse, user.ID)
 	if genRefreshTokenErr != nil {
 		zap.L().Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr), zap.String("username", loginRequest.Username))
-		return nil, cerr.NewSysError()
+		return nil, genRefreshTokenErr
 	}
 	resp := &vo.LoginVo{
 		AccessToken:  accessToken,
@@ -112,7 +112,7 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, *cerr.Error
 	return resp, nil
 }
 
-func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) *cerr.Error {
+func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) error {
 	redisClient := cache.Client
 
 	accessTokenRemainExpireTime, getAccessTokenRemainExpireTimeErr := jwt.GetRemainExpireTime(logoutRequest.AccessToken)
@@ -148,7 +148,7 @@ func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) *cer
 			time.Duration(accessTokenRemainExpireTime)*time.Second)
 		if status.Err() != nil {
 			zap.L().Error("Failed to set access token blacklist", zap.Error(status.Err()))
-			return cerr.NewSysError()
+			return status.Err()
 		}
 	}
 
@@ -158,23 +158,23 @@ func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) *cer
 			time.Duration(refreshTokenRemainExpireTime)*time.Second)
 		if status.Err() != nil {
 			zap.L().Error("Failed to set refresh token blacklist", zap.Error(status.Err()))
-			return cerr.NewSysError()
+			return status.Err()
 		}
 	}
 
 	return nil
 }
 
-func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.RefreshTokenDto) (*vo.LoginVo, *cerr.Error) {
+func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.RefreshTokenDto) (*vo.LoginVo, error) {
 	claims, parseTokenErr := jwt.ParseToken(refreshTokenRequest.RefreshToken)
 	if parseTokenErr != nil {
 		zap.L().Error("Failed to parse refresh token", zap.Error(parseTokenErr))
-		return nil, cerr.NewSysError()
+		return nil, parseTokenErr
 	}
 	expireTime, getExpireTimeErr := claims.GetExpirationTime()
 	if getExpireTimeErr != nil {
 		zap.L().Error("Failed to get expire time from refresh token", zap.Error(getExpireTimeErr))
-		return nil, cerr.NewSysError()
+		return nil, getExpireTimeErr
 	}
 
 	resp := &vo.LoginVo{}
@@ -182,7 +182,7 @@ func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.Ref
 	accessToken, genAccessTokenErr := jwt.GenAccessToken(jwt.DefaultIssuse, claims.UserID)
 	if genAccessTokenErr != nil {
 		zap.L().Error("Failed to generate access token", zap.Error(genAccessTokenErr))
-		return nil, cerr.NewSysError()
+		return nil, genAccessTokenErr
 	}
 	resp.AccessToken = accessToken
 
@@ -195,14 +195,14 @@ func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.Ref
 				time.Duration(expireTime.Unix())*time.Second).Result()
 			if setBlacklistErr != nil {
 				zap.L().Error("Failed to set refresh token blacklist", zap.Error(setBlacklistErr))
-				return nil, cerr.NewSysError()
+				return nil, setBlacklistErr
 			}
 		}
 
 		refreshToken, genRefreshTokenErr := jwt.GenRefreshToken(jwt.DefaultIssuse, claims.UserID)
 		if genRefreshTokenErr != nil {
 			zap.L().Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr))
-			return nil, cerr.NewSysError()
+			return nil, genRefreshTokenErr
 		}
 		resp.RefreshToken = refreshToken
 	}

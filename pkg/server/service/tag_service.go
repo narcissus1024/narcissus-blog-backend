@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"strings"
 	"time"
 
@@ -21,11 +20,11 @@ type tagService struct {
 }
 
 // ListAllTag 获取所有标签
-func (s *tagService) ListAllTag(ctx *gin.Context) ([]vo.TagVo, *cerr.Error) {
+func (s *tagService) ListAllTag(ctx *gin.Context) ([]vo.TagVo, error) {
 	tagList, err := dao.TagDao.ListAllTag(ctx)
 	if err != nil {
 		zap.L().Error("Failed to list tag name", zap.Error(err))
-		return nil, cerr.NewSysError()
+		return nil, err
 	}
 	var tagVoList []vo.TagVo
 	for _, tag := range tagList {
@@ -40,7 +39,7 @@ func (s *tagService) ListAllTag(ctx *gin.Context) ([]vo.TagVo, *cerr.Error) {
 }
 
 // ListTag 获取标签列表，分页、条件
-func (s *tagService) ListTag(c *gin.Context, tagListDto dto.TagListDto) (*vo.TagListVo, *cerr.Error) {
+func (s *tagService) ListTag(c *gin.Context, tagListDto dto.TagListDto) (*vo.TagListVo, error) {
 	// 分页查询 - 获取标签列表
 	var tagList []model.ArticleTag
 	var tagTotal int64
@@ -61,12 +60,8 @@ func (s *tagService) ListTag(c *gin.Context, tagListDto dto.TagListDto) (*vo.Tag
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return nil, customErr
-		}
 		zap.L().Error("Failed to list tag", zap.Error(txErr))
-		return nil, cerr.NewSysError()
+		return nil, txErr
 	}
 
 	var tagVoList []vo.TagVo
@@ -96,11 +91,11 @@ func (s *tagService) ListTag(c *gin.Context, tagListDto dto.TagListDto) (*vo.Tag
 }
 
 // ListTagIdByNameArr 根据标签名列表查询标签ID列表
-func (s *tagService) ListTagIdByNameArr(ctx *gin.Context, tagDto dto.TagDto) ([]int64, *cerr.Error) {
+func (s *tagService) ListTagIdByNameArr(ctx *gin.Context, tagDto dto.TagDto) ([]int64, error) {
 	idList, err := dao.TagDao.ListTagIdByNameArr(ctx, tagDto.NameList)
 	if err != nil {
 		zap.L().Error("Failed to list tag id by name arr", zap.Error(err))
-		return idList, cerr.NewSysError()
+		return idList, err
 	}
 	if len(idList) != len(tagDto.NameList) {
 		zap.L().Error("Tag id count does not equal to tag name count",
@@ -113,21 +108,21 @@ func (s *tagService) ListTagIdByNameArr(ctx *gin.Context, tagDto dto.TagDto) ([]
 }
 
 // GetTagDetail 获取标签详情
-func (s *tagService) GetTagDetail(ctx *gin.Context, tagQueryDto dto.TagQueryDto) (*vo.TagVo, *cerr.Error) {
+func (s *tagService) GetTagDetail(ctx *gin.Context, tagQueryDto dto.TagQueryDto) (*vo.TagVo, error) {
 	var tag *model.ArticleTag
 	if tagQueryDto.ID != nil {
 		var getErr error
 		tag, getErr = dao.TagDao.QueryTagByID(ctx, *tagQueryDto.ID)
 		if getErr != nil {
 			zap.L().Error("Failed to get tag detail", zap.Error(getErr))
-			return nil, cerr.NewSysError()
+			return nil, getErr
 		}
 	} else if tagQueryDto.Name != nil {
 		var getErr error
 		tag, getErr = dao.TagDao.QueryTagByName(ctx, *tagQueryDto.Name)
 		if getErr != nil {
 			zap.L().Error("Failed to get tag detail", zap.Error(getErr))
-			return nil, cerr.NewSysError()
+			return nil, getErr
 		}
 	} else {
 		return nil, cerr.NewParamError()
@@ -145,7 +140,7 @@ func (s *tagService) GetTagDetail(ctx *gin.Context, tagQueryDto dto.TagQueryDto)
 }
 
 // CreateTagList 创建标签 - 批量
-func (s *tagService) CreateTagList(ctx *gin.Context, tagDto dto.TagDto) *cerr.Error {
+func (s *tagService) CreateTagList(ctx *gin.Context, tagDto dto.TagDto) error {
 	now := time.Now()
 	var tagModels []model.ArticleTag
 	for _, name := range tagDto.NameList {
@@ -160,13 +155,13 @@ func (s *tagService) CreateTagList(ctx *gin.Context, tagDto dto.TagDto) *cerr.Er
 			return cerr.New(cerr.ERROR_ARTICLE_TAG_EXIST)
 		}
 		zap.L().Error("Failed to insert tag", zap.Error(err))
-		return cerr.NewSysError()
+		return err
 	}
 	return nil
 }
 
 // UpdateTag 更新标签
-func (s *tagService) UpdateTag(ctx *gin.Context, updateDto dto.TagUpdateDto) *cerr.Error {
+func (s *tagService) UpdateTag(ctx *gin.Context, updateDto dto.TagUpdateDto) error {
 	txErr := mysql.RunDBTransaction(ctx, func() error {
 		tagVo, getErr := s.GetTagDetail(ctx, dto.TagQueryDto{
 			ID: &updateDto.ID,
@@ -185,26 +180,22 @@ func (s *tagService) UpdateTag(ctx *gin.Context, updateDto dto.TagUpdateDto) *ce
 		tagModel.UpdatedTime = time.Now()
 		if err := dao.TagDao.UpdateTagByID(ctx, tagModel); err != nil {
 			zap.L().Error("Failed to update tag", zap.Error(err), zap.Int64("tag id", updateDto.ID))
-			return cerr.NewSysError()
+			return err
 		}
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return customErr
-		}
 		zap.L().Error("Failed to update tag", zap.Error(txErr))
-		return cerr.NewSysError()
+		return txErr
 	}
 
 	return nil
 }
 
-func (s *tagService) DeleteTagList(deleteDto dto.TagDto) *cerr.Error {
+func (s *tagService) DeleteTagList(deleteDto dto.TagDto) error {
 	if err := dao.TagDao.DeleteTagByNameList(deleteDto.NameList); err != nil {
 		zap.L().Error("Failed to delete tag", zap.Error(err), zap.Strings("tag", deleteDto.NameList))
-		return cerr.NewSysError()
+		return err
 	}
 	return nil
 }

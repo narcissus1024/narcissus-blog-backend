@@ -9,3 +9,7 @@ build:
 	else
 		GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o bin/narcissus-blog-linux main.go
 	endif
+
+upload:
+	scp -r bin/narcissus-blog-linux narcissus:/home/narcissus/workspace/deployment
+#	scp -r conf narcissus:/home/narcissus/workspace/deployment

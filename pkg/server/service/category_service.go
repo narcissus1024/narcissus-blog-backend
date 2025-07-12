@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"strings"
 	"time"
 
@@ -21,11 +20,11 @@ type categoryService struct {
 }
 
 // ListAllCategory 获取所有分类
-func (s *categoryService) ListAllCategory(ctx *gin.Context) ([]vo.CategoryVo, *cerr.Error) {
+func (s *categoryService) ListAllCategory(ctx *gin.Context) ([]vo.CategoryVo, error) {
 	categoryList, err := dao.CategoryDao.ListAllCategory(ctx)
 	if err != nil {
 		zap.L().Error("Failed to list all category", zap.Error(err))
-		return nil, cerr.NewSysError()
+		return nil, err
 	}
 	resp := []vo.CategoryVo{}
 	for _, category := range categoryList {
@@ -40,7 +39,7 @@ func (s *categoryService) ListAllCategory(ctx *gin.Context) ([]vo.CategoryVo, *c
 }
 
 // ListCategory 获取分类列表 - 分页、条件
-func (s *categoryService) ListCategory(ctx *gin.Context, categoryDto dto.CategoryListDto) (*vo.CategoryListVo, *cerr.Error) {
+func (s *categoryService) ListCategory(ctx *gin.Context, categoryDto dto.CategoryListDto) (*vo.CategoryListVo, error) {
 	// 分页查询 - 获取分类列表
 	var categoryList []model.ArticleCategory
 	var total int64
@@ -61,11 +60,8 @@ func (s *categoryService) ListCategory(ctx *gin.Context, categoryDto dto.Categor
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return nil, customErr
-		}
-		return nil, cerr.NewSysError()
+		zap.L().Error("Failed to run db transaction", zap.Error(txErr))
+		return nil, txErr
 	}
 
 	voList := []vo.CategoryVo{}
@@ -95,7 +91,7 @@ func (s *categoryService) ListCategory(ctx *gin.Context, categoryDto dto.Categor
 }
 
 // GetCategoryIDByName 根据分类名获取分类ID
-func (s *categoryService) GetCategoryIDByName(ctx *gin.Context, categoryName string) (int, *cerr.Error) {
+func (s *categoryService) GetCategoryIDByName(ctx *gin.Context, categoryName string) (int, error) {
 
 	if err := dto.CommonValidateName(categoryName, dto.CATEGORY_MIN_LEN, dto.CATEGORY_MAX_LEN); err != nil {
 		return -1, cerr.NewParamError()
@@ -104,7 +100,7 @@ func (s *categoryService) GetCategoryIDByName(ctx *gin.Context, categoryName str
 	id, err := dao.CategoryDao.QueryCategoryIDByName(ctx, categoryName)
 	if err != nil {
 		zap.L().Error("Failed to query category id by name", zap.Error(err), zap.String("category", categoryName))
-		return -1, cerr.NewSysError()
+		return -1, err
 	}
 	if id < 0 {
 		return -1, cerr.New(cerr.ERROR_ARTICLE_CATEGORY_NOT_EXIST)
@@ -113,21 +109,21 @@ func (s *categoryService) GetCategoryIDByName(ctx *gin.Context, categoryName str
 }
 
 // GetCategoryDetail 获取分类详情
-func (s *categoryService) GetCategoryDetail(ctx *gin.Context, categoryQueryDto dto.CategoryQueryDto) (*vo.CategoryVo, *cerr.Error) {
+func (s *categoryService) GetCategoryDetail(ctx *gin.Context, categoryQueryDto dto.CategoryQueryDto) (*vo.CategoryVo, error) {
 	var category *model.ArticleCategory
 	if categoryQueryDto.ID != nil {
 		var getErr error
 		category, getErr = dao.CategoryDao.QueryCategoryByID(ctx, *categoryQueryDto.ID)
 		if getErr != nil {
 			zap.L().Error("Failed to get category detail", zap.Error(getErr))
-			return nil, cerr.NewSysError()
+			return nil, getErr
 		}
 	} else if categoryQueryDto.Name != nil {
 		var getErr error
 		category, getErr = dao.CategoryDao.QueryCategoryByName(ctx, *categoryQueryDto.Name)
 		if getErr != nil {
 			zap.L().Error("Failed to get category detail", zap.Error(getErr))
-			return nil, cerr.NewSysError()
+			return nil, getErr
 		}
 	} else {
 		return nil, cerr.NewParamError()
@@ -145,7 +141,7 @@ func (s *categoryService) GetCategoryDetail(ctx *gin.Context, categoryQueryDto d
 }
 
 // CreateCategoryList 创建分类 - 批量
-func (s *categoryService) CreateCategoryList(ctx *gin.Context, categoryDto dto.CategoryDto) *cerr.Error {
+func (s *categoryService) CreateCategoryList(ctx *gin.Context, categoryDto dto.CategoryDto) error {
 	now := time.Now()
 	var categoryModels []model.ArticleCategory
 	for _, name := range categoryDto.NameList {
@@ -161,13 +157,13 @@ func (s *categoryService) CreateCategoryList(ctx *gin.Context, categoryDto dto.C
 			return cerr.New(cerr.ERROR_ARTICLE_CATEGORY_EXIST)
 		}
 		zap.L().Error("Failed to insert category", zap.Error(err))
-		return cerr.NewSysError()
+		return err
 	}
 	return nil
 }
 
 // UpdateCategory 更新分类
-func (s *categoryService) UpdateCategory(ctx *gin.Context, updateDto dto.CategoryUpdateDto) *cerr.Error {
+func (s *categoryService) UpdateCategory(ctx *gin.Context, updateDto dto.CategoryUpdateDto) error {
 	txErr := mysql.RunDBTransaction(ctx, func() error {
 		categoryVo, getErr := s.GetCategoryDetail(ctx, dto.CategoryQueryDto{
 			ID: &updateDto.ID,
@@ -187,27 +183,23 @@ func (s *categoryService) UpdateCategory(ctx *gin.Context, updateDto dto.Categor
 		categoryModel.UpdatedTime = time.Now()
 		if err := dao.CategoryDao.UpdateCategoryByID(ctx, categoryModel); err != nil {
 			zap.L().Error("Failed to update category", zap.Error(err), zap.Int64("category id", updateDto.ID))
-			return cerr.NewSysError()
+			return err
 		}
 		return nil
 	})
 	if txErr != nil {
-		var customErr *cerr.Error
-		if errors.As(txErr, &customErr) {
-			return customErr
-		}
 		zap.L().Error("Failed to update category", zap.Error(txErr))
-		return cerr.NewSysError()
+		return txErr
 	}
 
 	return nil
 }
 
 // DeleteCategory 删除分类 - 批量
-func (s *categoryService) DeleteCategoryList(ctx *gin.Context, deleteRequest dto.CategoryDto) *cerr.Error {
+func (s *categoryService) DeleteCategoryList(ctx *gin.Context, deleteRequest dto.CategoryDto) error {
 	if err := dao.CategoryDao.DeleteCategoryByNameList(ctx, deleteRequest.NameList); err != nil {
 		zap.L().Error("Failed to delete category", zap.Error(err), zap.Strings("category", deleteRequest.NameList))
-		return cerr.NewSysError()
+		return err
 	}
 	return nil
 }

@@ -5,33 +5,28 @@ import (
 
 	"github.com/gin-gonic/gin"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"
-	"github.com/narcissus1949/narcissus-blog/pkg/vo"
+	"github.com/narcissus1949/narcissus-blog/pkg/vo/result"
 )
 
-func ResponseJson(c *gin.Context, httpCode int, err *cerr.Error, data any) {
-	result := vo.Result{
-		Error: err,
-		Data:  data,
-	}
+func ResponseJson(c *gin.Context, httpCode int, result result.Result) {
 	c.JSON(httpCode, result)
 }
 
-func OK(c *gin.Context, data any) {
-	ResponseJson(c, http.StatusOK, cerr.NewSuccess(), data)
-}
-
-func Fail(c *gin.Context, err *cerr.Error) {
-	ResponseJson(c, http.StatusOK, err, nil)
+func Fail(c *gin.Context, err error) {
+	ResponseJson(c, http.StatusOK, result.Fail(c, err))
 }
 
 func ParamFail(c *gin.Context, msg ...string) {
-	ResponseJson(c, http.StatusBadRequest, cerr.NewParamError(msg...), nil)
+	ResponseJson(c, http.StatusBadRequest, result.Fail(c, cerr.NewParamError(msg...)))
 }
 
 func UnauthorizedFail(c *gin.Context, msg ...string) {
-	ResponseJson(c, http.StatusUnauthorized, cerr.New(cerr.UNAUTHORIZED, msg...), nil)
+	ResponseJson(c, http.StatusUnauthorized, result.Fail(c, cerr.New(cerr.UNAUTHORIZED, msg...)))
 }
 
 func TokenExpire(c *gin.Context) {
-	ResponseJson(c, http.StatusUnauthorized, cerr.New(cerr.ERROR_USER_TOKEN_EXPIRE), nil)
+	ResponseJson(c, http.StatusUnauthorized, result.Fail(c, cerr.New(cerr.ERROR_USER_TOKEN_EXPIRE)))
+}
+func OK(c *gin.Context, data any) {
+	ResponseJson(c, http.StatusOK, result.Success(c, data))
 }
