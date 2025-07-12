@@ -12,7 +12,7 @@ type Article struct {
 	Title               string    `json:"title" gorm:"column:title;not null"`
 	Summary             string    `json:"summary" gorm:"column:summary;type:text"`
 	Type                uint8     `json:"type" gorm:"column:type;not null"`
-	CategoryID          int       `json:"category_id" gorm:"column:category_id;null"`
+	CategoryID          *int      `json:"category_id" gorm:"column:category_id;null"`
 	Author              string    `json:"author" gorm:"column:author;not null"`
 	AllowComment        bool      `json:"allow_comment" gorm:"column:allow_comment"`
 	Weight              int       `json:"weight" gorm:"column:weight"`

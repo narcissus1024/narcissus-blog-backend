@@ -19,10 +19,8 @@ func (r *TagDto) ValidateAndDefault() error {
 	if len(r.NameList) == 0 {
 		return errors.New("nameList is empty")
 	}
-	for i := range r.NameList {
-		if err := CommonValidateName(r.NameList[i], TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(r.NameList, TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
+		return err
 	}
 	return nil
 }
@@ -49,10 +47,8 @@ func (r *TagListDto) ValidateAndDefault() error {
 	if len(r.NameList) > 0 {
 		r.NameListFormat = strings.Split(r.NameList, ",")
 	}
-	for i := range r.NameListFormat {
-		if err := CommonValidateName(r.NameListFormat[i], TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(r.NameListFormat, TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
+		return err
 	}
 	return nil
 }

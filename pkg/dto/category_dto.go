@@ -18,10 +18,8 @@ func (r *CategoryDto) ValidateAndDefault() error {
 	if len(r.NameList) == 0 {
 		return errors.New("nameList is empty")
 	}
-	for i := range r.NameList {
-		if err := CommonValidateName(r.NameList[i], CATEGORY_MIN_LEN, CATEGORY_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(r.NameList, CATEGORY_MIN_LEN, CATEGORY_MAX_LEN); err != nil {
+		return err
 	}
 	return nil
 }
@@ -48,10 +46,8 @@ func (r *CategoryListDto) ValidateAndDefault() error {
 	if len(r.NameList) > 0 {
 		r.NameListFormat = strings.Split(r.NameList, ",")
 	}
-	for i := range r.NameListFormat {
-		if err := CommonValidateName(r.NameListFormat[i], CATEGORY_MIN_LEN, CATEGORY_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(r.NameListFormat, CATEGORY_MIN_LEN, CATEGORY_MAX_LEN); err != nil {
+		return err
 	}
 	return nil
 }

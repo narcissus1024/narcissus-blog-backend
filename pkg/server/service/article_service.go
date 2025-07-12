@@ -125,7 +125,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 				zap.L().Error("Category not exist, category name: ", zap.String("category", articleDto.Category))
 				return cerr.New(cerr.ERROR_ARTICLE_CATEGORY_NOT_EXIST)
 			}
-			articleModel.CategoryID = categoryId
+			articleModel.CategoryID = &categoryId
 		}
 
 		if len(articleDto.Tags) > 0 {
@@ -224,13 +224,13 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 		if articleModel.Type != utils.ARTICLE_TYPE_ABOUT {
 			if articleDetail.CategoryName == articleDto.Category {
 				articleModel.CategoryID = articleDetail.CategoryID
-			} else {
+			} else if len(strings.TrimSpace(articleDto.Category)) > 0 {
 				categoryId, err := CategoryService.GetCategoryIDByName(c, articleDto.Category)
 				if err != nil {
 					zap.L().Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
 					return err
 				}
-				articleModel.CategoryID = categoryId
+				articleModel.CategoryID = &categoryId
 			}
 		}
 

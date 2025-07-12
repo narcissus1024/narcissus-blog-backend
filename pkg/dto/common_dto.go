@@ -26,3 +26,17 @@ func CommonValidateName(name string, minLen, maxLen int) error {
 	}
 	return nil
 }
+
+func CommonValidateNameList(names []string, minLen, maxLen int) error {
+	seen := make(map[string]struct{})
+	for _, name := range names {
+		if _, ok := seen[name]; ok {
+			return errors.New("name contains duplicate elements")
+		}
+		seen[name] = struct{}{}
+		if err := CommonValidateName(name, minLen, maxLen); err != nil {
+			return err
+		}
+	}
+	return nil
+}

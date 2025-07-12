@@ -7,7 +7,7 @@ import (
 	"github.com/narcissus1949/narcissus-blog/internal/utils"
 )
 
-// 创建文章参数
+// 创建/更新文章参数
 type ArticleDto struct {
 	ID                  *int64   `json:"id"`
 	Title               string   `json:"title" binding:"required,no_lt_spacing,gte=1"`         // 文章标题
@@ -31,10 +31,8 @@ func (req *ArticleDto) VlidateAndDefault() error {
 			return err
 		}
 	}
-	for i := range req.Tags {
-		if err := CommonValidateName(req.Tags[i], TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(req.Tags, TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
+		return err
 	}
 	return nil
 }
@@ -62,10 +60,8 @@ func (req *ArticleListDto) VlidateAndSetDefault() error {
 			return errors.New("article type invalide")
 		}
 	}
-	for i := range req.Tags {
-		if err := CommonValidateName(req.Tags[i], TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
-			return err
-		}
+	if err := CommonValidateNameList(req.Tags, TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
+		return err
 	}
 	// 文章类型默认查询博文和随笔
 	if len(req.Type) == 0 {

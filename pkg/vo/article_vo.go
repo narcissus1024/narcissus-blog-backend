@@ -6,7 +6,7 @@ type ArticleMeta struct {
 	ID                  int64  `json:"id"`                  // 文章ID
 	Title               string `json:"title"`               // 文章标题
 	Summary             string `json:"summary"`             // 摘要
-	CategoryID          int    `json:"categoryID"`          // 文章分类ID，每篇文章最多1个分类，可以为空
+	CategoryID          *int   `json:"categoryID"`          // 文章分类ID，每篇文章最多1个分类，可以为空
 	Type                uint8  `json:"type"`                // 文章类型，0表示原创，1表示转载
 	TagsID              string `json:"tagsID"`              // 文章标签ID列表，用,隔开，每篇文章最多有5个标签
 	Author              string `json:"author"`              // 作者姓名或标识
