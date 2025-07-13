@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/narcissus1949/narcissus-blog/cmd/config"
+	"github.com/narcissus1949/narcissus-blog/cmd/blog/app/config"
 	"github.com/narcissus1949/narcissus-blog/internal/encrypt"
 	"github.com/narcissus1949/narcissus-blog/internal/jwt"
 )

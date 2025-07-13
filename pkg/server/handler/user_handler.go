@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"github.com/gin-gonic/gin"
@@ -9,13 +9,13 @@ import (
 	"go.uber.org/zap"
 )
 
-var UserController = new(userController)
+var UserHandler = new(userHandler)
 
-type userController struct {
+type userHandler struct {
 	// service service.UserService
 }
 
-func (c *userController) SignIn(ctx *gin.Context) {
+func (c *userHandler) SignIn(ctx *gin.Context) {
 	var signin dto.SignIn
 	if err := ctx.ShouldBindJSON(&signin); err != nil {
 		zap.L().Error("Failed to bind signin JSON", zap.Error(err))
@@ -31,7 +31,7 @@ func (c *userController) SignIn(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *userController) Login(ctx *gin.Context) {
+func (c *userHandler) Login(ctx *gin.Context) {
 	var loginDto dto.LoginDto
 	if err := ctx.ShouldBindJSON(&loginDto); err != nil {
 		zap.L().Error("Failed to bind login JSON", zap.Error(err))
@@ -51,7 +51,7 @@ func (c *userController) Login(ctx *gin.Context) {
 	resp.OK(ctx, token)
 }
 
-func (c *userController) Logout(ctx *gin.Context) {
+func (c *userHandler) Logout(ctx *gin.Context) {
 	var logoutDto dto.LogoutDto
 	if err := ctx.ShouldBindJSON(&logoutDto); err != nil {
 		zap.L().Error("Failed to bind logout JSON", zap.Error(err))
@@ -73,7 +73,7 @@ func (c *userController) Logout(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *userController) RefreshToken(ctx *gin.Context) {
+func (c *userHandler) RefreshToken(ctx *gin.Context) {
 	var refreshTokenDto dto.RefreshTokenDto
 	if err := ctx.ShouldBindJSON(&refreshTokenDto); err != nil {
 		zap.L().Error("Failed to bind refresh token JSON", zap.Error(err))

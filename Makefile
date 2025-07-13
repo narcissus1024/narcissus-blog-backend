@@ -1,4 +1,4 @@
-.PHONY: build
+.PHONY: build openapi upload
 
 # 根据当前操作系统自动选择编译方式
 build:
@@ -13,3 +13,6 @@ build:
 upload:
 	scp -r bin/narcissus-blog-linux narcissus:/home/narcissus/workspace/deployment
 #	scp -r conf narcissus:/home/narcissus/workspace/deployment
+
+openapi:
+  swag init -g ./cmd/blog/main.go -o docs

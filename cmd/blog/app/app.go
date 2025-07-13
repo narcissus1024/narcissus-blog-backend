@@ -1,11 +1,11 @@
-package cmd
+package app
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/narcissus1949/narcissus-blog/cmd/config"
+	"github.com/narcissus1949/narcissus-blog/cmd/blog/app/config"
 	"github.com/narcissus1949/narcissus-blog/internal/database/cache"
 	"github.com/narcissus1949/narcissus-blog/internal/database/mysql"
 	"github.com/narcissus1949/narcissus-blog/internal/logger"

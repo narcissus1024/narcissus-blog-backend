@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"errors"
@@ -13,12 +13,21 @@ import (
 	"go.uber.org/zap"
 )
 
-var ArticleController = new(articleController)
+var ArticleHandler = new(articleHandler)
 
-type articleController struct {
+type articleHandler struct {
 }
 
-func (c *articleController) SaveArticle(ctx *gin.Context) {
+// @Summary 登录
+// @Description 登录
+// @Produce json
+// @Param body body dto.ArticleDto true "body参数"
+// @Success 200 {string} string "ok" "返回用户信息"
+// @Failure 400 {string} string "err_code：10002 参数错误； err_code：10003 校验错误"
+// @Failure 401 {string} string "err_code：10001 登录失败"
+// @Failure 500 {string} string "err_code：20001 服务错误；err_code：20002 接口错误；err_code：20003 无数据错误；err_code：20004 数据库异常；err_code：20005 缓存异常"
+// @Router /user/person/login [post]
+func (c *articleHandler) SaveArticle(ctx *gin.Context) {
 	var articleDto dto.ArticleDto
 	if err := ctx.ShouldBindJSON(&articleDto); err != nil {
 		zap.L().Error("Failed to bind article JSON", zap.Error(err))
@@ -46,7 +55,7 @@ func (c *articleController) SaveArticle(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *articleController) CreateArticle(ctx *gin.Context) {
+func (c *articleHandler) CreateArticle(ctx *gin.Context) {
 	var articleDto dto.ArticleDto
 	if err := ctx.ShouldBindJSON(&articleDto); err != nil {
 		zap.L().Error("Failed to bind article JSON", zap.Error(err))
@@ -66,7 +75,7 @@ func (c *articleController) CreateArticle(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *articleController) ListArticleAdmin(ctx *gin.Context) {
+func (c *articleHandler) ListArticleAdmin(ctx *gin.Context) {
 	var articleListRequest dto.ArticleListDto
 	// 先设置默认，防止binding校验失败
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
@@ -94,7 +103,7 @@ func (c *articleController) ListArticleAdmin(ctx *gin.Context) {
 	resp.OK(ctx, articleList)
 }
 
-func (c *articleController) ListArticle(ctx *gin.Context) {
+func (c *articleHandler) ListArticle(ctx *gin.Context) {
 	var articleListRequest dto.ArticleListDto
 	// 先设置默认，防止binding校验失败
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
@@ -125,7 +134,7 @@ func (c *articleController) ListArticle(ctx *gin.Context) {
 	resp.OK(ctx, articleList)
 }
 
-func (c *articleController) GetArticleeDetail(ctx *gin.Context) {
+func (c *articleHandler) GetArticleeDetail(ctx *gin.Context) {
 	idStr := ctx.Query("id")
 	if len(strings.TrimSpace(idStr)) == 0 {
 		zap.L().Error("Failed to get article detail, id is 0")
@@ -147,7 +156,7 @@ func (c *articleController) GetArticleeDetail(ctx *gin.Context) {
 	resp.OK(ctx, articleDetail)
 }
 
-func (c *articleController) DeleteArticleList(ctx *gin.Context) {
+func (c *articleHandler) DeleteArticleList(ctx *gin.Context) {
 	var deleteDto dto.ArticleDeleteDto
 	if err := ctx.ShouldBindJSON(&deleteDto); err != nil {
 		zap.L().Error("Failed to bind delete article list JSON", zap.Error(err))

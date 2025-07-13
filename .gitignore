@@ -18,7 +18,6 @@ log
 
 conf/*
 !conf/conf_dev.yaml
-distribution/
 
 bin
 output

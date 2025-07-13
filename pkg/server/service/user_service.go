@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/narcissus1949/narcissus-blog/cmd/config"
+	"github.com/narcissus1949/narcissus-blog/cmd/blog/app/config"
 	"github.com/narcissus1949/narcissus-blog/internal/database/cache"
 	"github.com/narcissus1949/narcissus-blog/internal/encrypt"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"

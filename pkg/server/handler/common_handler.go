@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"net/http"
@@ -10,12 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var CommonController = new(commonController)
+var CommonHandler = new(commonHandler)
 
-type commonController struct {
+type commonHandler struct {
 }
 
-func (c *commonController) UploadImage(ctx *gin.Context) {
+func (c *commonHandler) UploadImage(ctx *gin.Context) {
 	// 限制本次请求体最大为 2MB
 	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, 2<<20)
 
@@ -35,7 +35,7 @@ func (c *commonController) UploadImage(ctx *gin.Context) {
 	resp.OK(ctx, result)
 }
 
-func (c *commonController) GetRASPublicKey(ctx *gin.Context) {
+func (c *commonHandler) GetRASPublicKey(ctx *gin.Context) {
 	result, err := service.CommonServiceInstance.GetRASPublicKey(ctx)
 	if err != nil {
 		resp.Fail(ctx, err)
@@ -44,7 +44,7 @@ func (c *commonController) GetRASPublicKey(ctx *gin.Context) {
 	resp.OK(ctx, result)
 }
 
-func (c *commonController) PublicKeyEncrypt(ctx *gin.Context) {
+func (c *commonHandler) PublicKeyEncrypt(ctx *gin.Context) {
 	var req dto.PublicKeyEncrypDto
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		zap.L().Error("Failed to bind public key encrypt request", zap.Error(err))

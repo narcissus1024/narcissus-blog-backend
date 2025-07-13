@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,12 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var CategoryController = new(categoryController)
+var CategoryHandler = new(categoryHandler)
 
-type categoryController struct {
+type categoryHandler struct {
 }
 
-func (c *categoryController) ListAllCategory(ctx *gin.Context) {
+func (c *categoryHandler) ListAllCategory(ctx *gin.Context) {
 	categoryList, listErr := service.CategoryService.ListAllCategory(ctx)
 	if listErr != nil {
 		resp.Fail(ctx, listErr)
@@ -23,7 +23,7 @@ func (c *categoryController) ListAllCategory(ctx *gin.Context) {
 	resp.OK(ctx, categoryList)
 }
 
-func (c *categoryController) ListCategory(ctx *gin.Context) {
+func (c *categoryHandler) ListCategory(ctx *gin.Context) {
 	var categoryDto dto.CategoryListDto
 	if err := ctx.ShouldBindQuery(&categoryDto); err != nil {
 		zap.L().Error("Failed to bind category list JSON", zap.Error(err))
@@ -44,7 +44,7 @@ func (c *categoryController) ListCategory(ctx *gin.Context) {
 	resp.OK(ctx, categoryList)
 }
 
-func (c *categoryController) GetCategoryDetail(ctx *gin.Context) {
+func (c *categoryHandler) GetCategoryDetail(ctx *gin.Context) {
 	var categoryDto dto.CategoryQueryDto
 	if err := ctx.ShouldBindQuery(&categoryDto); err != nil {
 		zap.L().Error("Failed to bind get category detail JSON", zap.Error(err))
@@ -64,7 +64,7 @@ func (c *categoryController) GetCategoryDetail(ctx *gin.Context) {
 	resp.OK(ctx, categoryDetail)
 }
 
-func (c *categoryController) CreateCategoryList(ctx *gin.Context) {
+func (c *categoryHandler) CreateCategoryList(ctx *gin.Context) {
 	var categoryDto dto.CategoryDto
 	if err := ctx.ShouldBindJSON(&categoryDto); err != nil {
 		zap.L().Error("Failed to bind create category JSON", zap.Error(err))
@@ -85,7 +85,7 @@ func (c *categoryController) CreateCategoryList(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *categoryController) UpdateCategory(ctx *gin.Context) {
+func (c *categoryHandler) UpdateCategory(ctx *gin.Context) {
 	var updateRequest dto.CategoryUpdateDto
 	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
 		zap.L().Error("Failed to bind update category JSON", zap.Error(err))
@@ -105,7 +105,7 @@ func (c *categoryController) UpdateCategory(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *categoryController) DeleteCategoryList(ctx *gin.Context) {
+func (c *categoryHandler) DeleteCategoryList(ctx *gin.Context) {
 	var deleteRequest dto.CategoryDto
 	if err := ctx.ShouldBindJSON(&deleteRequest); err != nil {
 		zap.L().Error("Failed to bind delete category JSON", zap.Error(err))

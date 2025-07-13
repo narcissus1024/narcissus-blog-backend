@@ -1,4 +1,4 @@
-package controller
+package handler
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,12 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var TagController = new(tagController)
+var TagHandler = new(tagHandler)
 
-type tagController struct {
+type tagHandler struct {
 }
 
-func (c *tagController) ListAllTag(ctx *gin.Context) {
+func (c *tagHandler) ListAllTag(ctx *gin.Context) {
 	tagList, listErr := service.TagService.ListAllTag(ctx)
 	if listErr != nil {
 		resp.Fail(ctx, listErr)
@@ -23,7 +23,7 @@ func (c *tagController) ListAllTag(ctx *gin.Context) {
 	resp.OK(ctx, tagList)
 }
 
-func (c *tagController) ListTag(ctx *gin.Context) {
+func (c *tagHandler) ListTag(ctx *gin.Context) {
 	var tagListDto dto.TagListDto
 	if err := ctx.ShouldBindQuery(&tagListDto); err != nil {
 		zap.L().Error("Failed to bind list tag query", zap.Error(err))
@@ -43,7 +43,7 @@ func (c *tagController) ListTag(ctx *gin.Context) {
 	resp.OK(ctx, tagList)
 }
 
-func (c *tagController) GetTagDetail(ctx *gin.Context) {
+func (c *tagHandler) GetTagDetail(ctx *gin.Context) {
 	var tagQueryDto dto.TagQueryDto
 	if err := ctx.ShouldBindQuery(&tagQueryDto); err != nil {
 		zap.L().Error("Failed to bind get tag detail query", zap.Error(err))
@@ -63,7 +63,7 @@ func (c *tagController) GetTagDetail(ctx *gin.Context) {
 	resp.OK(ctx, tagDetail)
 }
 
-func (c *tagController) CreateTagList(ctx *gin.Context) {
+func (c *tagHandler) CreateTagList(ctx *gin.Context) {
 	var tagRequest dto.TagDto
 	if err := ctx.ShouldBindJSON(&tagRequest); err != nil {
 		zap.L().Error("Failed to bind create tag JSON", zap.Error(err))
@@ -83,7 +83,7 @@ func (c *tagController) CreateTagList(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *tagController) UpdateTag(ctx *gin.Context) {
+func (c *tagHandler) UpdateTag(ctx *gin.Context) {
 	var tagUpdateDto dto.TagUpdateDto
 	if err := ctx.ShouldBindJSON(&tagUpdateDto); err != nil {
 		zap.L().Error("Failed to bind update tag JSON", zap.Error(err))
@@ -102,7 +102,7 @@ func (c *tagController) UpdateTag(ctx *gin.Context) {
 	resp.OK(ctx, nil)
 }
 
-func (c *tagController) DeleteTagList(ctx *gin.Context) {
+func (c *tagHandler) DeleteTagList(ctx *gin.Context) {
 	var deleteRequest dto.TagDto
 	if err := ctx.ShouldBindJSON(&deleteRequest); err != nil {
 		zap.L().Error("Failed to bind delete tag JSON", zap.Error(err))

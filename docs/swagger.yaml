@@ -1,0 +1,102 @@
+definitions:
+  dto.ArticleDto:
+    properties:
+      allow_comment:
+        description: 是否允许评论，0表示不允许评论，1表示允许评论
+        type: boolean
+      author:
+        description: 作者姓名或标识
+        maxLength: 50
+        minLength: 2
+        type: string
+      category:
+        description: 文章分类，每篇文章最多1个分类，可以为空
+        type: string
+      content:
+        description: 文章内容
+        minLength: 1
+        type: string
+      id:
+        type: integer
+      is_original:
+        description: 原创/转载标识。0表示非原创，1表示原创。默认初始值为1，表示原创
+        type: boolean
+      is_sticky:
+        description: 是否置顶。0表示不置顶，1表示置顶。默认初始值为 0
+        type: boolean
+      original_article_link:
+        description: 转载文章的原始文章链接，可为空
+        type: string
+      status:
+        description: 状态，0表示offline，1表示online
+        enum:
+        - 0
+        - 1
+        type: integer
+      summary:
+        description: 摘要
+        type: string
+      tags:
+        description: 文章标签列表，每篇文章最多有5个标签
+        items:
+          type: string
+        type: array
+      title:
+        description: 文章标题
+        minLength: 1
+        type: string
+      type:
+        description: 文章类型，0表示博客文章，1表示随笔，2表示关于
+        enum:
+        - 0
+        - 1
+        - 2
+        minimum: 0
+        type: integer
+      weight:
+        description: 文章权重，默认初始值为0
+        type: integer
+    required:
+    - author
+    - content
+    - title
+    type: object
+host: localhost:9090
+info:
+  contact: {}
+  description: narcissus-blog Swagger API
+  title: narcissus-blog Swagger API
+  version: "1.0"
+paths:
+  /user/person/login:
+    post:
+      description: 登录
+      parameters:
+      - description: body参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ArticleDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok" "返回用户信息
+          schema:
+            type: string
+        "400":
+          description: err_code：10002 参数错误； err_code：10003 校验错误
+          schema:
+            type: string
+        "401":
+          description: err_code：10001 登录失败
+          schema:
+            type: string
+        "500":
+          description: err_code：20001 服务错误；err_code：20002 接口错误；err_code：20003 无数据错误；err_code：20004
+            数据库异常；err_code：20005 缓存异常
+          schema:
+            type: string
+      summary: 登录
+swagger: "2.0"
