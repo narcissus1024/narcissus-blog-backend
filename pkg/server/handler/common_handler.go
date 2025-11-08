@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
 	"github.com/narcissus1949/narcissus-blog/pkg/dto"
 	"github.com/narcissus1949/narcissus-blog/pkg/server/service"
 	resp "github.com/narcissus1949/narcissus-blog/pkg/vo/response"
@@ -21,7 +22,7 @@ func (c *commonHandler) UploadImage(ctx *gin.Context) {
 
 	file, err := ctx.FormFile("file")
 	if err != nil {
-		zap.L().Error("Failed to get image file from request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to get image file from request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -47,7 +48,7 @@ func (c *commonHandler) GetRASPublicKey(ctx *gin.Context) {
 func (c *commonHandler) PublicKeyEncrypt(ctx *gin.Context) {
 	var req dto.PublicKeyEncrypDto
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		zap.L().Error("Failed to bind public key encrypt request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind public key encrypt request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}

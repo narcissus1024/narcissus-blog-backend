@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mime/multipart"
@@ -13,6 +14,7 @@ import (
 	"github.com/narcissus1949/narcissus-blog/cmd/blog/app/config"
 	"github.com/narcissus1949/narcissus-blog/internal/encrypt"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
 	"github.com/narcissus1949/narcissus-blog/internal/utils"
 	"github.com/narcissus1949/narcissus-blog/pkg/dto"
 	"github.com/narcissus1949/narcissus-blog/pkg/vo"
@@ -40,23 +42,24 @@ type commoneService struct {
 //	文件代理路径：ImgProxyURL/{文件相对路径}
 func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeader) (vo.UploadImageVo, error) {
 	var resp vo.UploadImageVo
+	l := logger.FromContext(ctx.Request.Context())
 
 	if err := checkImageFile(file); err != nil {
-		zap.L().Error("Failed to check image file", zap.Error(err))
+		l.Error("Failed to check image file", zap.Error(err))
 		return resp, cerr.NewParamError()
 	}
 
 	// 图片转为webp格式
 	f, openErr := file.Open()
 	if openErr != nil {
-		zap.L().Error("Failed to open image file", zap.Error(openErr))
+		l.Error("Failed to open image file", zap.Error(openErr))
 		return resp, openErr
 	}
 	defer f.Close()
 
 	webpImageByte, convertImgErr := utils.ImageBytes2WebpBytes(f, 90)
 	if convertImgErr != nil {
-		zap.L().Error("Failed to convert image to webp", zap.Error(convertImgErr))
+		l.Error("Failed to convert image to webp", zap.Error(convertImgErr))
 		return resp, convertImgErr
 	}
 
@@ -68,7 +71,7 @@ func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeade
 	savePath := path.Join(config.Config.App.ImgDataDir, imgRelativePath)
 
 	if err := utils.SaveFileBytes(webpImageByte, savePath); err != nil {
-		zap.L().Error("Failed to save image file", zap.Error(err))
+		l.Error("Failed to save image file", zap.Error(err))
 		return resp, err
 	}
 
@@ -78,14 +81,15 @@ func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeade
 
 func (s *commoneService) GetRASPublicKey(ctx *gin.Context) (vo.RASPublicKeyVo, error) {
 	var resp vo.RASPublicKeyVo
+	l := logger.FromContext(ctx.Request.Context())
 	publicKey, err := encrypt.RSAReadPublicKey(config.Config.App.PublicKeyDir)
 	if err != nil {
-		zap.L().Error("Failed to read public key", zap.Error(err))
+		l.Error("Failed to read public key", zap.Error(err))
 		return resp, err
 	}
 	publicKeyPEM, err := encrypt.RSAPublicKey2Mem(publicKey)
 	if err != nil {
-		zap.L().Error("Failed to convert public key to PEM", zap.Error(err))
+		l.Error("Failed to convert public key to PEM", zap.Error(err))
 		return resp, err
 	}
 	resp.PublicKey = string(publicKeyPEM)
@@ -94,9 +98,11 @@ func (s *commoneService) GetRASPublicKey(ctx *gin.Context) (vo.RASPublicKeyVo, e
 
 func (s *commoneService) PublicKeyEncrypt(req dto.PublicKeyEncrypDto) (vo.PublicKeyEncryptVo, error) {
 	var resp vo.PublicKeyEncryptVo
+	// 无上下文场景，使用全局回退
+	l := logger.FromContext(context.Background())
 	encryptedData, err := encrypt.RSAEncryptWithBase64([]byte(req.Data), config.Config.App.PublicKeyDir)
 	if err != nil {
-		zap.L().Error("Failed to encrypt data with public key", zap.Error(err))
+		l.Error("Failed to encrypt data with public key", zap.Error(err))
 		return resp, err
 	}
 	resp.EncryptedData = string(encryptedData)

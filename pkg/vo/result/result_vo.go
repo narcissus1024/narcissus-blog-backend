@@ -8,10 +8,9 @@ import (
 )
 
 type Result struct {
-	Code      int         `json:"code"`
-	Message   string      `json:"message"`
-	Data      any         `json:"data"`
-	RequestId interface{} `json:"requestId"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
 func Success(c *gin.Context, data any) Result {

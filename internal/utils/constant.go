@@ -20,6 +20,8 @@ const (
 	ARTICLE_PAGE_VIEW_KEY_TEMPLATE = "article_page_view:%s" // article_id
 
 	COOKIE_TEMP_USER_ID = "temp_user_id"
+
+	X_REQUEST_ID = "X-Request-Id" // 请求ID，用于日志跟踪
 )
 
 func GetArticleIDFromPageViewKey(key string) (int64, error) {

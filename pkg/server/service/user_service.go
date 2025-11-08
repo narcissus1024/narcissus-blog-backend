@@ -9,6 +9,7 @@ import (
 	"github.com/narcissus1949/narcissus-blog/internal/encrypt"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"
 	"github.com/narcissus1949/narcissus-blog/internal/jwt"
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
 	"github.com/narcissus1949/narcissus-blog/internal/model"
 	"github.com/narcissus1949/narcissus-blog/internal/utils"
 	"github.com/narcissus1949/narcissus-blog/pkg/dto"
@@ -23,14 +24,16 @@ var UserServiceInstance = new(userService)
 type userService struct {
 }
 
-func (s *userService) SignIn(signIn dto.SignIn) error {
+func (s *userService) SignIn(ctx *gin.Context, signIn dto.SignIn) error {
 	if err := signIn.Validate(); err != nil {
 		return cerr.NewParamError(err.Error())
 	}
+	// 从请求上下文获取日志记录器
+	l := logger.FromContext(ctx.Request.Context())
 
 	existUser, queryErr := dao.UserDaoInstance.QueryByUsername(signIn.Username)
 	if queryErr != nil {
-		zap.L().Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", signIn.Username))
+		l.Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", signIn.Username))
 		return queryErr
 	}
 
@@ -41,13 +44,13 @@ func (s *userService) SignIn(signIn dto.SignIn) error {
 	// rsa解密
 	decryptPasswd, decryptErr := encrypt.RSADecryptWithBase64([]byte(signIn.Password), config.Config.App.PrivateKeyDir)
 	if decryptErr != nil {
-		zap.L().Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", signIn.Username))
+		l.Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", signIn.Username))
 		return decryptErr
 	}
 
 	hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(decryptPasswd), bcrypt.DefaultCost)
 	if hashErr != nil {
-		zap.L().Error("Failed to hash password", zap.Error(hashErr), zap.String("username", signIn.Username))
+		l.Error("Failed to hash password", zap.Error(hashErr), zap.String("username", signIn.Username))
 		return hashErr
 	}
 
@@ -64,17 +67,19 @@ func (s *userService) SignIn(signIn dto.SignIn) error {
 	}
 
 	if err := dao.UserDaoInstance.InsertUser(&user); err != nil {
-		zap.L().Error("Failed to insert user", zap.Error(err), zap.String("username", signIn.Username))
+		l.Error("Failed to insert user", zap.Error(err), zap.String("username", signIn.Username))
 		return err
 	}
 	return nil
 }
 
-func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, error) {
+func (s *userService) Login(ctx *gin.Context, loginRequest dto.LoginDto) (*vo.LoginVo, error) {
+	// 从请求上下文获取日志记录器
+	l := logger.FromContext(ctx.Request.Context())
 	// 用户验证
 	user, queryErr := dao.UserDaoInstance.QueryByUsername(loginRequest.Username)
 	if queryErr != nil {
-		zap.L().Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", loginRequest.Username))
+		l.Error("Failed to query user by username", zap.Error(queryErr), zap.String("username", loginRequest.Username))
 		return nil, queryErr
 	}
 
@@ -85,7 +90,7 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, error) {
 	// rsa解密
 	decryptPasswd, decryptErr := encrypt.RSADecryptWithBase64([]byte(loginRequest.Password), config.Config.App.PrivateKeyDir)
 	if decryptErr != nil {
-		zap.L().Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", loginRequest.Username))
+		l.Error("Failed to decrypt password", zap.Error(decryptErr), zap.String("username", loginRequest.Username))
 		return nil, decryptErr
 	}
 	// 密码验证
@@ -96,12 +101,12 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, error) {
 	// 生成token
 	accessToken, genAccessTokenErr := jwt.GenAccessToken(jwt.DefaultIssuse, user.ID)
 	if genAccessTokenErr != nil {
-		zap.L().Error("Failed to generate access token", zap.Error(genAccessTokenErr), zap.String("username", loginRequest.Username))
+		l.Error("Failed to generate access token", zap.Error(genAccessTokenErr), zap.String("username", loginRequest.Username))
 		return nil, genAccessTokenErr
 	}
 	refreshToken, genRefreshTokenErr := jwt.GenRefreshToken(jwt.DefaultIssuse, user.ID)
 	if genRefreshTokenErr != nil {
-		zap.L().Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr), zap.String("username", loginRequest.Username))
+		l.Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr), zap.String("username", loginRequest.Username))
 		return nil, genRefreshTokenErr
 	}
 	resp := &vo.LoginVo{
@@ -114,31 +119,32 @@ func (s *userService) Login(loginRequest dto.LoginDto) (*vo.LoginVo, error) {
 
 func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) error {
 	redisClient := cache.Client
+	l := logger.FromContext(ctx.Request.Context())
 
 	accessTokenRemainExpireTime, getAccessTokenRemainExpireTimeErr := jwt.GetRemainExpireTime(logoutRequest.AccessToken)
 	if getAccessTokenRemainExpireTimeErr != nil {
-		zap.L().Error("Failed to get access token remain expire time", zap.Error(getAccessTokenRemainExpireTimeErr))
+		l.Error("Failed to get access token remain expire time", zap.Error(getAccessTokenRemainExpireTimeErr))
 		return cerr.New(cerr.ERROR_USER_TOKEN_INVALIDE)
 	}
 	userIDFromAccessToken, getUserIDFromAccessTokenErr := jwt.GetUserID(logoutRequest.AccessToken)
 	if getUserIDFromAccessTokenErr != nil && !jwt.IsExpireErr(getUserIDFromAccessTokenErr) {
-		zap.L().Error("Failed to get user id from access token", zap.Error(getUserIDFromAccessTokenErr))
+		l.Error("Failed to get user id from access token", zap.Error(getUserIDFromAccessTokenErr))
 		return cerr.New(cerr.ERROR_USER_TOKEN_INVALIDE)
 	}
 
 	refreshTokenRemainExpireTime, getRefreshTokenRemainExpireTimeErr := jwt.GetRemainExpireTime(logoutRequest.RefreshToken)
 	if getRefreshTokenRemainExpireTimeErr != nil {
-		zap.L().Error("Failed to get refresh token remain expire time", zap.Error(getRefreshTokenRemainExpireTimeErr))
+		l.Error("Failed to get refresh token remain expire time", zap.Error(getRefreshTokenRemainExpireTimeErr))
 		return cerr.New(cerr.ERROR_USER_TOKEN_INVALIDE)
 	}
 	userIDFromRefreshToken, getUserIDFromRefreshTokenErr := jwt.GetUserID(logoutRequest.RefreshToken)
 	if getUserIDFromRefreshTokenErr != nil && !jwt.IsExpireErr(getUserIDFromRefreshTokenErr) {
-		zap.L().Error("Failed to get user id from refresh token", zap.Error(getUserIDFromRefreshTokenErr))
+		l.Error("Failed to get user id from refresh token", zap.Error(getUserIDFromRefreshTokenErr))
 		return cerr.New(cerr.ERROR_USER_TOKEN_INVALIDE)
 	}
 
 	if userIDFromAccessToken != userIDFromRefreshToken {
-		zap.L().Error("User id from access token and refresh token not equal")
+		l.Error("User id from access token and refresh token not equal")
 		return cerr.New(cerr.ERROR_USER_TOKEN_INVALIDE)
 	}
 
@@ -147,7 +153,7 @@ func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) erro
 			userIDFromAccessToken,
 			time.Duration(accessTokenRemainExpireTime)*time.Second)
 		if status.Err() != nil {
-			zap.L().Error("Failed to set access token blacklist", zap.Error(status.Err()))
+			l.Error("Failed to set access token blacklist", zap.Error(status.Err()))
 			return status.Err()
 		}
 	}
@@ -157,7 +163,7 @@ func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) erro
 			userIDFromRefreshToken,
 			time.Duration(refreshTokenRemainExpireTime)*time.Second)
 		if status.Err() != nil {
-			zap.L().Error("Failed to set refresh token blacklist", zap.Error(status.Err()))
+			l.Error("Failed to set refresh token blacklist", zap.Error(status.Err()))
 			return status.Err()
 		}
 	}
@@ -166,14 +172,15 @@ func (s *userService) Logout(ctx *gin.Context, logoutRequest dto.LogoutDto) erro
 }
 
 func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.RefreshTokenDto) (*vo.LoginVo, error) {
+	l := logger.FromContext(ctx.Request.Context())
 	claims, parseTokenErr := jwt.ParseToken(refreshTokenRequest.RefreshToken)
 	if parseTokenErr != nil {
-		zap.L().Error("Failed to parse refresh token", zap.Error(parseTokenErr))
+		l.Error("Failed to parse refresh token", zap.Error(parseTokenErr))
 		return nil, parseTokenErr
 	}
 	expireTime, getExpireTimeErr := claims.GetExpirationTime()
 	if getExpireTimeErr != nil {
-		zap.L().Error("Failed to get expire time from refresh token", zap.Error(getExpireTimeErr))
+		l.Error("Failed to get expire time from refresh token", zap.Error(getExpireTimeErr))
 		return nil, getExpireTimeErr
 	}
 
@@ -181,7 +188,7 @@ func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.Ref
 	// 刷新token
 	accessToken, genAccessTokenErr := jwt.GenAccessToken(jwt.DefaultIssuse, claims.UserID)
 	if genAccessTokenErr != nil {
-		zap.L().Error("Failed to generate access token", zap.Error(genAccessTokenErr))
+		l.Error("Failed to generate access token", zap.Error(genAccessTokenErr))
 		return nil, genAccessTokenErr
 	}
 	resp.AccessToken = accessToken
@@ -194,14 +201,14 @@ func (s *userService) RefreshToken(ctx *gin.Context, refreshTokenRequest dto.Ref
 				claims.UserID,
 				time.Duration(expireTime.Unix())*time.Second).Result()
 			if setBlacklistErr != nil {
-				zap.L().Error("Failed to set refresh token blacklist", zap.Error(setBlacklistErr))
+				l.Error("Failed to set refresh token blacklist", zap.Error(setBlacklistErr))
 				return nil, setBlacklistErr
 			}
 		}
 
 		refreshToken, genRefreshTokenErr := jwt.GenRefreshToken(jwt.DefaultIssuse, claims.UserID)
 		if genRefreshTokenErr != nil {
-			zap.L().Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr))
+			l.Error("Failed to generate refresh token", zap.Error(genRefreshTokenErr))
 			return nil, genRefreshTokenErr
 		}
 		resp.RefreshToken = refreshToken

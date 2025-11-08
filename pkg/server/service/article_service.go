@@ -12,6 +12,7 @@ import (
 	"github.com/narcissus1949/narcissus-blog/internal/database/cache"
 	"github.com/narcissus1949/narcissus-blog/internal/database/mysql"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
 	"github.com/narcissus1949/narcissus-blog/internal/model"
 	"github.com/narcissus1949/narcissus-blog/internal/utils"
 	"github.com/narcissus1949/narcissus-blog/pkg/dto"
@@ -27,6 +28,7 @@ type articleService struct {
 }
 
 func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest dto.ArticleListDto) (*vo.ArticleListVo, error) {
+	l := logger.FromContext(ctx.Request.Context())
 	var articleListResponse vo.ArticleListVo
 	var articleList []model.ArticleDetail
 	var totalArticle int64
@@ -35,7 +37,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 		var listArticleErr error
 		articleList, listArticleErr = dao.ArticleDao.ListArticle(ctx, articleListRequest)
 		if listArticleErr != nil {
-			zap.L().Error("Failed to list article", zap.Error(listArticleErr))
+			l.Error("Failed to list article", zap.Error(listArticleErr))
 			return listArticleErr
 		}
 
@@ -43,13 +45,13 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 		var countArticleErr error
 		totalArticle, countArticleErr = dao.ArticleDao.CountArticle(ctx, articleListRequest)
 		if countArticleErr != nil {
-			zap.L().Error("Failed to count article", zap.Error(countArticleErr))
+			l.Error("Failed to count article", zap.Error(countArticleErr))
 			return countArticleErr
 		}
 		return nil
 	})
 	if txErr != nil {
-		zap.L().Error("Failed to run db transaction", zap.Error(txErr))
+		l.Error("Failed to run db transaction", zap.Error(txErr))
 		return nil, txErr
 	}
 
@@ -64,7 +66,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 		// 获取文章浏览量缓存
 		viewsCache := 0
 		if intCmd := cache.Client.SCard(ctx, utils.GetArticlePageViewKey(articleList[i].ID)); intCmd.Err() != nil {
-			zap.L().Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", articleList[i].ID))
+			l.Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", articleList[i].ID))
 		} else {
 			viewsCache = int(intCmd.Val())
 		}
@@ -108,6 +110,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 }
 
 func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto) error {
+	l := logger.FromContext(c.Request.Context())
 
 	now := time.Now()
 	articleModel := &model.Article{
@@ -132,11 +135,11 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 		if len(strings.TrimSpace(articleDto.Category)) > 0 {
 			categoryId, err := CategoryService.GetCategoryIDByName(c, articleDto.Category)
 			if err != nil {
-				zap.L().Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
+				l.Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
 				return err
 			}
 			if categoryId < 0 {
-				zap.L().Error("Category not exist, category name: ", zap.String("category", articleDto.Category))
+				l.Error("Category not exist, category name: ", zap.String("category", articleDto.Category))
 				return cerr.New(cerr.ERROR_ARTICLE_CATEGORY_NOT_EXIST)
 			}
 			articleModel.CategoryID = &categoryId
@@ -146,11 +149,11 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 			var listTagErr error
 			tagIdList, listTagErr = TagService.ListTagIdByNameArr(c, dto.TagDto{NameList: articleDto.Tags})
 			if listTagErr != nil {
-				zap.L().Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", articleDto.Tags))
+				l.Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", articleDto.Tags))
 				return listTagErr
 			}
 			if len(tagIdList) == 0 {
-				zap.L().Error("Tag not exist, tags: ", zap.Strings("tags", articleDto.Tags))
+				l.Error("Tag not exist, tags: ", zap.Strings("tags", articleDto.Tags))
 				return cerr.New(cerr.ERROR_ARTICLE_TAG_NOT_EXIST)
 			}
 		}
@@ -159,7 +162,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 	txErr := mysql.RunDBTransaction(c, func() error {
 		// 插入文章
 		if err := dao.ArticleDao.InsertArticle(c, articleModel); err != nil {
-			zap.L().Error("Failed to insert article", zap.Error(err))
+			l.Error("Failed to insert article", zap.Error(err))
 			return err
 		}
 
@@ -168,7 +171,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 			ArticleID: articleModel.ID,
 			Content:   articleDto.Content,
 		}); err != nil {
-			zap.L().Error("Failed to insert article content", zap.Error(err))
+			l.Error("Failed to insert article content", zap.Error(err))
 			return err
 		}
 
@@ -183,7 +186,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 				relations = append(relations, relation)
 			}
 			if err := dao.ArticleTagRelationDao.InsertArticleTagRelations(c, relations); err != nil {
-				zap.L().Error("Failed to insert article tag relation", zap.Error(err))
+				l.Error("Failed to insert article tag relation", zap.Error(err))
 				return err
 			}
 		}
@@ -191,7 +194,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 	})
 
 	if txErr != nil {
-		zap.L().Error("Failed to execute transaction", zap.Error(txErr))
+		l.Error("Failed to execute transaction", zap.Error(txErr))
 		return txErr
 	}
 
@@ -199,6 +202,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 }
 
 func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto) error {
+	l := logger.FromContext(c.Request.Context())
 	if articleDto.ID == nil || *articleDto.ID <= 0 {
 		return cerr.NewParamError("文章id无效")
 	}
@@ -207,7 +211,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 		// 0.检查文章存在
 		articleDetail, err := s.GetArticleDetail(c, *articleDto.ID)
 		if err != nil {
-			zap.L().Error("Failed to get article detail", zap.Error(err), zap.Int64("articleID", *articleDto.ID))
+			l.Error("Failed to get article detail", zap.Error(err), zap.Int64("articleID", *articleDto.ID))
 			return err
 		}
 		if articleDetail == nil {
@@ -241,7 +245,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 			} else if len(strings.TrimSpace(articleDto.Category)) > 0 {
 				categoryId, err := CategoryService.GetCategoryIDByName(c, articleDto.Category)
 				if err != nil {
-					zap.L().Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
+					l.Error("Failed to get category id", zap.Error(err), zap.String("category", articleDto.Category))
 					return err
 				}
 				articleModel.CategoryID = &categoryId
@@ -250,7 +254,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 
 		// 更新文章
 		if _, updateArticleErr := dao.ArticleDao.UpdateArticle(c, articleModel); updateArticleErr != nil {
-			zap.L().Error("Failed to update article", zap.Error(updateArticleErr), zap.Int64("articleID", articleModel.ID))
+			l.Error("Failed to update article", zap.Error(updateArticleErr), zap.Int64("articleID", articleModel.ID))
 			return updateArticleErr
 		}
 		// 2.更新文章内容
@@ -260,7 +264,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 				Content:   articleDto.Content,
 			}
 			if _, updateContentErr := dao.ArticleContentDao.UpdateContentByArticleID(c, articleContentModel); updateContentErr != nil {
-				zap.L().Error("Failed to update article content", zap.Error(updateContentErr), zap.Int64("articleID", articleModel.ID))
+				l.Error("Failed to update article content", zap.Error(updateContentErr), zap.Int64("articleID", articleModel.ID))
 				return updateContentErr
 			}
 		}
@@ -270,7 +274,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 			// 获取新增标签id
 			tagIdList, listTagErr := dao.TagDao.ListTagIdByNameArr(c, deleteTags)
 			if listTagErr != nil {
-				zap.L().Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", deleteTags))
+				l.Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", deleteTags))
 				return listTagErr
 			}
 			var relations []*model.ArticleTagRelation
@@ -283,7 +287,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 			}
 			// 删除旧的标签关联
 			if err := dao.ArticleTagRelationDao.DeleteArticleTagRelations(c, relations); err != nil {
-				zap.L().Error("Failed to delete article tag relation", zap.Error(err), zap.Int64("articleID", articleModel.ID))
+				l.Error("Failed to delete article tag relation", zap.Error(err), zap.Int64("articleID", articleModel.ID))
 				return err
 			}
 		}
@@ -291,7 +295,7 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 			// 获取新增标签id
 			tagIdList, listTagErr := dao.TagDao.ListTagIdByNameArr(c, addTags)
 			if listTagErr != nil {
-				zap.L().Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", addTags))
+				l.Error("Failed to list tag id by name arr", zap.Error(listTagErr), zap.Strings("tags", addTags))
 				return listTagErr
 			}
 			var relations []*model.ArticleTagRelation
@@ -304,20 +308,21 @@ func (s *articleService) UpdateArticle(c *gin.Context, articleDto dto.ArticleDto
 			}
 			// 插入文章-标签关系
 			if err := dao.ArticleTagRelationDao.InsertArticleTagRelations(c, relations); err != nil {
-				zap.L().Error("Failed to insert article tag relation", zap.Error(err), zap.Int64("articleID", articleModel.ID))
+				l.Error("Failed to insert article tag relation", zap.Error(err), zap.Int64("articleID", articleModel.ID))
 				return err
 			}
 		}
 		return nil
 	})
 	if txErr != nil {
-		zap.L().Error("Failed to update article", zap.Error(txErr))
+		l.Error("Failed to update article", zap.Error(txErr))
 		return txErr
 	}
 	return nil
 }
 
 func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.ArticleDetailVo, error) {
+	l := logger.FromContext(c.Request.Context())
 	if id <= 0 {
 		return nil, cerr.NewParamError("id无效")
 	}
@@ -325,19 +330,19 @@ func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.Article
 	articleDetail, err := dao.ArticleDao.QueryArticleDetail(c, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			zap.L().Error("Article not exist", zap.Int64("article id", id))
+			l.Error("Article not exist", zap.Int64("article id", id))
 			return nil, cerr.New(cerr.ERROR_ARTICLE_NOT_EXIST)
 		}
-		zap.L().Error("Failed to query article detail", zap.Error(err), zap.Int64("article id", id))
+		l.Error("Failed to query article detail", zap.Error(err), zap.Int64("article id", id))
 		return nil, err
 	}
 	if articleDetail == nil {
-		zap.L().Error("Article not exist", zap.Int64("article id", id))
+		l.Error("Article not exist", zap.Int64("article id", id))
 		return nil, cerr.New(cerr.ERROR_ARTICLE_NOT_EXIST)
 	}
 	// 查询文章浏览量缓存
 	if intCmd := cache.Client.SCard(c, utils.GetArticlePageViewKey(id)); intCmd.Err() != nil {
-		zap.L().Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", id))
+		l.Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", id))
 	} else {
 		articleDetail.Views += int(intCmd.Val())
 	}
@@ -373,35 +378,37 @@ func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.Article
 }
 
 func (s *articleService) DeleteArticleList(c *gin.Context, deleteDto dto.ArticleDeleteDto) error {
+	l := logger.FromContext(c.Request.Context())
 	txErr := mysql.RunDBTransaction(c, func() error {
 		// 删除文章
 		if err := dao.ArticleDao.DeleteArticleByIDs(c, deleteDto.IDs); err != nil {
-			zap.L().Error("Failed to delete article by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
+			l.Error("Failed to delete article by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
 			return err
 		}
 		// 删除文章内容
 		if err := dao.ArticleContentDao.DeleteContentByArticleIDs(c, deleteDto.IDs); err != nil {
-			zap.L().Error("Failed to delete article content by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
+			l.Error("Failed to delete article content by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
 			return err
 		}
 		// 删除文章标签关联
 		if err := dao.ArticleTagRelationDao.DeleteArticleTagRelationsByArticleIDs(c, deleteDto.IDs); err != nil {
-			zap.L().Error("Failed to delete article tag relation by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
+			l.Error("Failed to delete article tag relation by ids", zap.Error(err), zap.Int64s("ids", deleteDto.IDs))
 			return err
 		}
 		return nil
 	})
 	if txErr != nil {
-		zap.L().Error("Failed to delete article list", zap.Error(txErr))
+		l.Error("Failed to delete article list", zap.Error(txErr))
 		return txErr
 	}
 	return nil
 }
 
 func (s *articleService) AddPageView(c *gin.Context, pageViewDto dto.ArticlePageViewDto) error {
+	l := logger.FromContext(c.Request.Context())
 	_, err := s.GetArticleDetail(c, pageViewDto.ArticleID)
 	if err != nil {
-		zap.L().Error("Failed to get article detail", zap.Error(err), zap.Int64("article id", pageViewDto.ArticleID))
+		l.Error("Failed to get article detail", zap.Error(err), zap.Int64("article id", pageViewDto.ArticleID))
 		return err
 	}
 
@@ -411,7 +418,7 @@ func (s *articleService) AddPageView(c *gin.Context, pageViewDto dto.ArticlePage
 		if errors.Is(err, http.ErrNoCookie) {
 			hasCookie = false
 		} else {
-			zap.L().Error("Failed to get cookie", zap.String("cookie", utils.COOKIE_TEMP_USER_ID), zap.Error(err))
+			l.Error("Failed to get cookie", zap.String("cookie", utils.COOKIE_TEMP_USER_ID), zap.Error(err))
 			return err
 		}
 	}
@@ -436,7 +443,7 @@ func (s *articleService) AddPageView(c *gin.Context, pageViewDto dto.ArticlePage
 	}
 	key := utils.GetArticlePageViewKey(pageViewDto.ArticleID)
 	if status := cache.Client.SAdd(c, key, tempUserID); status.Err() != nil {
-		zap.L().Error("Failed to set page view", zap.Error(status.Err()), zap.String("key", key))
+		l.Error("Failed to set page view", zap.Error(status.Err()), zap.String("key", key))
 		return status.Err()
 	}
 

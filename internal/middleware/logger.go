@@ -9,7 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
+
 	"github.com/gin-gonic/gin"
+	"github.com/narcissus1949/narcissus-blog/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -19,13 +22,25 @@ func GinLogger() gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
+		// x-request-id
+		requestID := c.GetHeader(utils.X_REQUEST_ID)
+		if requestID == "" {
+			requestID = utils.GenerateUUID()
+		}
+		c.Set(utils.X_REQUEST_ID, requestID)
+		c.Writer.Header().Set(utils.X_REQUEST_ID, requestID)
+
+		// 为该请求构建带有 X-Request-ID 的 logger，并注入到 request context
+		reqLogger := zap.L().With(zap.String(utils.X_REQUEST_ID, requestID))
+		c.Request = c.Request.WithContext(logger.ToContext(c.Request.Context(), reqLogger))
 		// body, _ := c.GetRawData()
 		// c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 		c.Next()
 
 		cost := time.Since(start)
-		zap.L().Info("http request info",
+		reqLogger.Info("http request info",
+			zap.String(utils.X_REQUEST_ID, requestID),
 			zap.String("path", path),
 			zap.Int("status", c.Writer.Status()),
 			zap.String("method", c.Request.Method),
@@ -45,6 +60,8 @@ func GinRecovery(stack bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				// 从 ctx 中获取请求级 logger（若没有则回退到全局）
+				reqLogger := logger.FromContext(c.Request.Context())
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
 				var brokenPipe bool
@@ -58,7 +75,7 @@ func GinRecovery(stack bool) gin.HandlerFunc {
 
 				httpRequest, _ := httputil.DumpRequest(c.Request, false)
 				if brokenPipe {
-					zap.L().Error(c.Request.URL.Path,
+					reqLogger.Error(c.Request.URL.Path,
 						zap.Any("error", err),
 						zap.String("request", string(httpRequest)),
 					)
@@ -69,13 +86,13 @@ func GinRecovery(stack bool) gin.HandlerFunc {
 				}
 
 				if stack {
-					zap.L().Error("[Recovery from panic]",
+					reqLogger.Error("[Recovery from panic]",
 						zap.Any("error", err),
 						zap.String("request", string(httpRequest)),
 						zap.String("stack", string(debug.Stack())),
 					)
 				} else {
-					zap.L().Error("[Recovery from panic]",
+					reqLogger.Error("[Recovery from panic]",
 						zap.Any("error", err),
 						zap.String("request", string(httpRequest)),
 					)

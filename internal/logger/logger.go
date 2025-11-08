@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -105,4 +106,29 @@ func getLogWriter(conf LogConfig) (zapcore.WriteSyncer, error) {
 func IsExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)
+}
+
+// ---- Context helpers ----
+// 使用私有 key 避免与其他 context 值冲突
+type ctxKey struct{}
+
+var loggerCtxKey = ctxKey{}
+
+// FromContext 从 context 中获取 *zap.Logger
+// 如果未设置，则回退到全局 logger（zap.L()）
+func FromContext(ctx context.Context) *zap.Logger {
+	if ctx == nil {
+		return zap.L()
+	}
+	if v := ctx.Value(loggerCtxKey); v != nil {
+		if l, ok := v.(*zap.Logger); ok && l != nil {
+			return l
+		}
+	}
+	return zap.L()
+}
+
+// ToContext 将 *zap.Logger 放入 context，返回新的 context
+func ToContext(ctx context.Context, l *zap.Logger) context.Context {
+	return context.WithValue(ctx, loggerCtxKey, l)
 }

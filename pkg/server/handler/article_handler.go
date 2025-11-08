@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/narcissus1949/narcissus-blog/internal/logger"
 	"github.com/narcissus1949/narcissus-blog/pkg/dto"
 	"github.com/narcissus1949/narcissus-blog/pkg/server/service"
 	resp "github.com/narcissus1949/narcissus-blog/pkg/vo/response"
@@ -30,12 +31,12 @@ type articleHandler struct {
 func (c *articleHandler) SaveArticle(ctx *gin.Context) {
 	var articleDto dto.ArticleDto
 	if err := ctx.ShouldBindJSON(&articleDto); err != nil {
-		zap.L().Error("Failed to bind article JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind article JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := articleDto.VlidateAndDefault(); err != nil {
-		zap.L().Error("Failed to validate article request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -58,12 +59,12 @@ func (c *articleHandler) SaveArticle(ctx *gin.Context) {
 func (c *articleHandler) CreateArticle(ctx *gin.Context) {
 	var articleDto dto.ArticleDto
 	if err := ctx.ShouldBindJSON(&articleDto); err != nil {
-		zap.L().Error("Failed to bind article JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind article JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := articleDto.VlidateAndDefault(); err != nil {
-		zap.L().Error("Failed to validate article request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -79,18 +80,18 @@ func (c *articleHandler) ListArticleAdmin(ctx *gin.Context) {
 	var articleListRequest dto.ArticleListDto
 	// 先设置默认，防止binding校验失败
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
-		zap.L().Error("Failed to validate article list request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article list request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := ctx.ShouldBindJSON(&articleListRequest); err != nil && !errors.Is(err, io.EOF) {
-		zap.L().Error("Failed to bind article list JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind article list JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	// 第二次设置默认，防止传入零值
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
-		zap.L().Error("Failed to validate article list request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article list request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -107,18 +108,18 @@ func (c *articleHandler) ListArticle(ctx *gin.Context) {
 	var articleListRequest dto.ArticleListDto
 	// 先设置默认，防止binding校验失败
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
-		zap.L().Error("Failed to validate article list request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article list request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := ctx.ShouldBindJSON(&articleListRequest); err != nil && !errors.Is(err, io.EOF) {
-		zap.L().Error("Failed to bind article list JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind article list JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	// 第二次设置默认，防止传入零值
 	if err := articleListRequest.VlidateAndSetDefault(); err != nil {
-		zap.L().Error("Failed to validate article list request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate article list request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -137,13 +138,13 @@ func (c *articleHandler) ListArticle(ctx *gin.Context) {
 func (c *articleHandler) GetArticleeDetail(ctx *gin.Context) {
 	idStr := ctx.Query("id")
 	if len(strings.TrimSpace(idStr)) == 0 {
-		zap.L().Error("Failed to get article detail, id is 0")
+		logger.FromContext(ctx.Request.Context()).Error("Failed to get article detail, id is 0")
 		resp.ParamFail(ctx, errors.New("id invalide").Error())
 		return
 	}
 	id, idConvErr := strconv.Atoi(idStr)
 	if idConvErr != nil {
-		zap.L().Error("Failed to convert article id to int", zap.Error(idConvErr))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to convert article id to int", zap.Error(idConvErr))
 		resp.ParamFail(ctx, idConvErr.Error())
 		return
 	}
@@ -159,12 +160,12 @@ func (c *articleHandler) GetArticleeDetail(ctx *gin.Context) {
 func (c *articleHandler) DeleteArticleList(ctx *gin.Context) {
 	var deleteDto dto.ArticleDeleteDto
 	if err := ctx.ShouldBindJSON(&deleteDto); err != nil {
-		zap.L().Error("Failed to bind delete article list JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind delete article list JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := deleteDto.VlidateAndDefault(); err != nil {
-		zap.L().Error("Failed to validate delete article list request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate delete article list request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
@@ -178,12 +179,12 @@ func (c *articleHandler) DeleteArticleList(ctx *gin.Context) {
 func (c *articleHandler) IncreasePageView(ctx *gin.Context) {
 	var pageViewDto dto.ArticlePageViewDto
 	if err := ctx.ShouldBindJSON(&pageViewDto); err != nil {
-		zap.L().Error("Failed to bind page view JSON", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to bind page view JSON", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}
 	if err := pageViewDto.VlidateAndDefault(); err != nil {
-		zap.L().Error("Failed to validate page view request", zap.Error(err))
+		logger.FromContext(ctx.Request.Context()).Error("Failed to validate page view request", zap.Error(err))
 		resp.ParamFail(ctx, err.Error())
 		return
 	}

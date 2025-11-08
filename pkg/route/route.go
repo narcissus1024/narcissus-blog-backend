@@ -46,6 +46,7 @@ func Setup(gin *gin.Engine) {
 	{
 		userAuthRoute.POST("/logout", handler.UserHandler.Logout)
 		userAuthRoute.POST("/token/refresh", handler.UserHandler.RefreshToken)
+		userAuthRoute.POST("/checkAuth", handler.UserHandler.CheckAuth)
 	}
 
 	// 文章
