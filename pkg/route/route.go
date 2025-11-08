@@ -20,6 +20,8 @@ func Setup(gin *gin.Engine) {
 	// 文章路由
 	articleRoute := g.Group("/article")
 	{
+		articleRoute.POST("/views", handler.ArticleHandler.IncreasePageView)
+
 		articleRoute.POST("/list", handler.ArticleHandler.ListArticle)
 		articleRoute.GET("/detail", handler.ArticleHandler.GetArticleeDetail)
 

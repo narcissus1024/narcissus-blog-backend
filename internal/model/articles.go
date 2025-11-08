@@ -15,6 +15,7 @@ type Article struct {
 	CategoryID          *int      `json:"category_id" gorm:"column:category_id;null"`
 	Author              string    `json:"author" gorm:"column:author;not null"`
 	AllowComment        bool      `json:"allow_comment" gorm:"column:allow_comment"`
+	Views               int       `json:"views" gorm:"column:views"`
 	Weight              int       `json:"weight" gorm:"column:weight"`
 	IsSticky            bool      `json:"is_sticky" gorm:"column:is_sticky"`
 	IsOriginal          bool      `json:"is_original" gorm:"column:is_original"`

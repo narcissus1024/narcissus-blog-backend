@@ -1,18 +1,19 @@
 app:
   name: my-gin-demo
   port: 9090
+  domain: ''
   imgDataDir: D:\data\nginx\html\img
-  imgProxyURL: http://172.26.18.90:9002
+  imgProxyURL: http://172.28.9.143:9002
   privateKeyDir: D:\workspace\src\go\narcissus-blog\conf
   publicKeyDir: D:\workspace\src\go\narcissus-blog\conf
 mysql:
   user: root
   password: admin
-  host: 172.26.18.90
+  host: 172.28.9.143
   port: 3306
   dbname: blog_narcissus
 redis:
-  host: 172.26.18.90
+  host: 172.28.9.143
   port: 6379
   password: admin
   db: 0

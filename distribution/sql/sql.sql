@@ -26,11 +26,12 @@ CREATE TABLE roles (
 CREATE TABLE `articles` (
     `id` INT AUTO_INCREMENT COMMENT '文章ID',
     `title` VARCHAR(255) NOT NULL COMMENT '文章标题',
-    `summary` TEXT NOT NULL COMMENT '摘要',
+    `summary` VARCHAR(500) NOT NULL COMMENT '摘要',
     `type` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '文章类型，0表示博客文章，1表示随笔，2表示关于',
     `category_id` INT COMMENT '文章分类ID，每篇文章最多1个分类，可以为空',
     `author` VARCHAR(50) NOT NULL COMMENT '作者姓名或标识',
     `allow_comment` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否允许评论，0表示不允许评论，1表示允许评论',
+    `views` INT NOT NULL DEFAULT 0 COMMENT '文章浏览量',
     `weight` INT NOT NULL DEFAULT 0 COMMENT '文章权重，默认初始值为0',
     `is_sticky` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否置顶。0表示不置顶，1表示置顶。默认初始值为 0',
     `is_original` TINYINT(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '原创/转载标识。0表示非原创，1表示原创。默认初始值为1，表示原创',

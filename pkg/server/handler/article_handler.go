@@ -174,3 +174,23 @@ func (c *articleHandler) DeleteArticleList(ctx *gin.Context) {
 	}
 	resp.OK(ctx, nil)
 }
+
+func (c *articleHandler) IncreasePageView(ctx *gin.Context) {
+	var pageViewDto dto.ArticlePageViewDto
+	if err := ctx.ShouldBindJSON(&pageViewDto); err != nil {
+		zap.L().Error("Failed to bind page view JSON", zap.Error(err))
+		resp.ParamFail(ctx, err.Error())
+		return
+	}
+	if err := pageViewDto.VlidateAndDefault(); err != nil {
+		zap.L().Error("Failed to validate page view request", zap.Error(err))
+		resp.ParamFail(ctx, err.Error())
+		return
+	}
+	if err := service.ArticleService.AddPageView(ctx, pageViewDto); err != nil {
+		resp.Fail(ctx, err)
+		return
+	}
+
+	resp.OK(ctx, nil)
+}

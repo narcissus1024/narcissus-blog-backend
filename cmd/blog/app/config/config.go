@@ -25,8 +25,9 @@ type Conf struct {
 type AppConfig struct {
 	Name          string `json:"name"`
 	Port          int    `json:"port"`
-	ImgDataDir    string `json:"imgDataDir"`
-	ImgProxyURL   string `json:"imgProxyURL"`
+	Domain        string `json:"domain"`
+	ImgDataDir    string `json:"imgDataDir"`  // 图片存储根路径，绝对路径
+	ImgProxyURL   string `json:"imgProxyURL"` // 图片代理URL
 	PrivateKeyDir string `json:"privateKeyDir"`
 	PublicKeyDir  string `json:"publicKeyDir"`
 }
@@ -36,6 +37,7 @@ func NewDefaultAppCfg() AppConfig {
 	return AppConfig{
 		Name:          "blog",
 		Port:          8080,
+		Domain:        "localhost",
 		ImgDataDir:    filepath.Join(rootDir, "data", "img"),
 		ImgProxyURL:   "http://127.0.0.1:8082/img",
 		PrivateKeyDir: filepath.Join(rootDir, "data", "conf"),

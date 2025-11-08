@@ -1,11 +1,15 @@
 package service
 
 import (
+	"errors"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/narcissus1949/narcissus-blog/cmd/blog/app/config"
+	"github.com/narcissus1949/narcissus-blog/internal/database/cache"
 	"github.com/narcissus1949/narcissus-blog/internal/database/mysql"
 	cerr "github.com/narcissus1949/narcissus-blog/internal/error"
 	"github.com/narcissus1949/narcissus-blog/internal/model"
@@ -14,6 +18,7 @@ import (
 	"github.com/narcissus1949/narcissus-blog/pkg/server/dao"
 	"github.com/narcissus1949/narcissus-blog/pkg/vo"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 var ArticleService = new(articleService)
@@ -26,7 +31,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 	var articleList []model.ArticleDetail
 	var totalArticle int64
 	txErr := mysql.RunDBTransaction(ctx, func() error {
-		// get article list
+		// 获取文章列表
 		var listArticleErr error
 		articleList, listArticleErr = dao.ArticleDao.ListArticle(ctx, articleListRequest)
 		if listArticleErr != nil {
@@ -34,7 +39,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 			return listArticleErr
 		}
 
-		// get article total count
+		// 获取文章总数
 		var countArticleErr error
 		totalArticle, countArticleErr = dao.ArticleDao.CountArticle(ctx, articleListRequest)
 		if countArticleErr != nil {
@@ -48,13 +53,20 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 		return nil, txErr
 	}
 
-	// format response
+	// 响应参数封装
 	list := make([]vo.ArticleDetailVo, 0, len(articleList))
 	for i := range articleList {
 		tagList := []string{}
 		if len(articleList[i].TagNameList) > 0 {
 			tagList = strings.Split(articleList[i].TagNameList, ",")
 			sort.Strings(tagList)
+		}
+		// 获取文章浏览量缓存
+		viewsCache := 0
+		if intCmd := cache.Client.SCard(ctx, utils.GetArticlePageViewKey(articleList[i].ID)); intCmd.Err() != nil {
+			zap.L().Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", articleList[i].ID))
+		} else {
+			viewsCache = int(intCmd.Val())
 		}
 		list = append(list, vo.ArticleDetailVo{
 			ArticleMeta: vo.ArticleMeta{
@@ -65,6 +77,7 @@ func (s *articleService) ListArticleAdmin(ctx *gin.Context, articleListRequest d
 				Type:                articleList[i].Type,
 				Author:              articleList[i].Author,
 				AllowComment:        articleList[i].AllowComment,
+				Views:               articleList[i].Views + viewsCache,
 				Weight:              articleList[i].Weight,
 				IsSticky:            articleList[i].IsSticky,
 				IsOriginal:          articleList[i].IsOriginal,
@@ -103,6 +116,7 @@ func (s *articleService) CreateArticle(c *gin.Context, articleDto dto.ArticleDto
 		Summary:             articleDto.Summary,
 		Author:              articleDto.Author,
 		AllowComment:        articleDto.AllowComment,
+		Views:               0,
 		Weight:              articleDto.Weight,
 		IsSticky:            articleDto.IsSticky,
 		IsOriginal:          articleDto.IsOriginal,
@@ -307,14 +321,25 @@ func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.Article
 	if id <= 0 {
 		return nil, cerr.NewParamError("id无效")
 	}
+	// 查询文章
 	articleDetail, err := dao.ArticleDao.QueryArticleDetail(c, id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			zap.L().Error("Article not exist", zap.Int64("article id", id))
+			return nil, cerr.New(cerr.ERROR_ARTICLE_NOT_EXIST)
+		}
 		zap.L().Error("Failed to query article detail", zap.Error(err), zap.Int64("article id", id))
 		return nil, err
 	}
 	if articleDetail == nil {
 		zap.L().Error("Article not exist", zap.Int64("article id", id))
 		return nil, cerr.New(cerr.ERROR_ARTICLE_NOT_EXIST)
+	}
+	// 查询文章浏览量缓存
+	if intCmd := cache.Client.SCard(c, utils.GetArticlePageViewKey(id)); intCmd.Err() != nil {
+		zap.L().Error("Failed to query article view from cache", zap.Error(intCmd.Err()), zap.Int64("article id", id))
+	} else {
+		articleDetail.Views += int(intCmd.Val())
 	}
 
 	tagList := []string{}
@@ -330,6 +355,7 @@ func (s *articleService) GetArticleDetail(c *gin.Context, id int64) (*vo.Article
 			CategoryID:          articleDetail.CategoryID,
 			Author:              articleDetail.Author,
 			AllowComment:        articleDetail.AllowComment,
+			Views:               articleDetail.Views,
 			Weight:              articleDetail.Weight,
 			IsSticky:            articleDetail.IsSticky,
 			IsOriginal:          articleDetail.IsOriginal,
@@ -369,6 +395,51 @@ func (s *articleService) DeleteArticleList(c *gin.Context, deleteDto dto.Article
 		zap.L().Error("Failed to delete article list", zap.Error(txErr))
 		return txErr
 	}
+	return nil
+}
+
+func (s *articleService) AddPageView(c *gin.Context, pageViewDto dto.ArticlePageViewDto) error {
+	_, err := s.GetArticleDetail(c, pageViewDto.ArticleID)
+	if err != nil {
+		zap.L().Error("Failed to get article detail", zap.Error(err), zap.Int64("article id", pageViewDto.ArticleID))
+		return err
+	}
+
+	cookie, err := c.Request.Cookie(utils.COOKIE_TEMP_USER_ID)
+	hasCookie := true
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			hasCookie = false
+		} else {
+			zap.L().Error("Failed to get cookie", zap.String("cookie", utils.COOKIE_TEMP_USER_ID), zap.Error(err))
+			return err
+		}
+	}
+	if cookie == nil {
+		hasCookie = false
+	}
+
+	var tempUserID string
+	if hasCookie {
+		tempUserID = cookie.Value
+	} else {
+		tempUserID = utils.GenerateTempUserID(c.ClientIP(), c.Request.UserAgent())
+		// 设置cookie
+		c.SetCookie(
+			utils.COOKIE_TEMP_USER_ID,
+			tempUserID,
+			int(48*time.Hour),
+			"/",
+			"."+config.Config.App.Domain,
+			false,
+			true)
+	}
+	key := utils.GetArticlePageViewKey(pageViewDto.ArticleID)
+	if status := cache.Client.SAdd(c, key, tempUserID); status.Err() != nil {
+		zap.L().Error("Failed to set page view", zap.Error(status.Err()), zap.String("key", key))
+		return status.Err()
+	}
+
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -206,10 +207,7 @@ func (d *articlerDao) QueryArticleDetail(c *gin.Context, id int64) (*model.Artic
 		Group("a.id").
 		First(&detail)
 
-	if res.RowsAffected == 0 {
-		return nil, res.Error
-	}
-	return &detail, nil
+	return &detail, res.Error
 }
 
 func (d *articlerDao) DeleteArticleByIDs(c *gin.Context, ids []int64) error {
@@ -226,4 +224,14 @@ func (d *articlerDao) DeleteArticleByID(c *gin.Context, id int64) error {
 	}
 	db := mysql.GetDBFromContext(c)
 	return db.Table(model.TableNameArticle).Where("id = ?", id).Delete(&model.Article{}).Error
+}
+
+func (d *articlerDao) IncreaseArticleViews(c context.Context, id int64, increment int) (int64, error) {
+	if id <= 0 {
+		return 0, errors.New("id is invalide")
+	}
+	db := mysql.GetDBFromContext2(c)
+	// 更新views，在原基础上增加count
+	result := db.Table(model.TableNameArticle).Where("id = ?", id).Update("views", gorm.Expr("views + ?", increment))
+	return result.RowsAffected, result.Error
 }

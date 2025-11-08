@@ -1,11 +1,16 @@
 package utils
 
 import (
+	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 func ParseAuthorization(authorization string) (string, error) {
@@ -49,4 +54,25 @@ func ArrayExistInt(array []int, target int) bool {
 		}
 	}
 	return false
+}
+
+func GenerateUUID() string {
+	return strings.ReplaceAll(uuid.New().String(), "-", "")
+}
+
+func GenerateTempUserID(ip, userAgent string) string {
+	h := sha1.New()
+	h.Write([]byte(ip + userAgent))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func Retry(count int, delayMill int, fn func() error) error {
+	var err error
+	for i := 0; i < count; i++ {
+		if err = fn(); err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(delayMill) * time.Millisecond)
+	}
+	return err
 }

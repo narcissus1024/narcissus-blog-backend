@@ -2,9 +2,15 @@ package dto
 
 import (
 	"errors"
+	"unicode/utf8"
 
 	"github.com/mcuadros/go-defaults"
 	"github.com/narcissus1949/narcissus-blog/internal/utils"
+)
+
+const (
+	TITLE_MAX_LEN   = 255
+	SUMMARY_MAX_LEN = 500
 )
 
 // 创建/更新文章参数
@@ -33,6 +39,12 @@ func (req *ArticleDto) VlidateAndDefault() error {
 	}
 	if err := CommonValidateNameList(req.Tags, TAG_MIN_LEN, TAG_MAX_LEN); err != nil {
 		return err
+	}
+	if utf8.RuneCountInString(req.Title) > TITLE_MAX_LEN {
+		return errors.New("title is too long")
+	}
+	if utf8.RuneCountInString(req.Summary) > SUMMARY_MAX_LEN {
+		return errors.New("summary is too long")
 	}
 	return nil
 }
@@ -82,6 +94,17 @@ func (req *ArticleDeleteDto) VlidateAndDefault() error {
 		if req.IDs[i] <= 0 {
 			return errors.New("article id is invalid")
 		}
+	}
+	return nil
+}
+
+type ArticlePageViewDto struct {
+	ArticleID int64 `json:"article_id" binding:"required"`
+}
+
+func (req *ArticlePageViewDto) VlidateAndDefault() error {
+	if req.ArticleID <= 0 {
+		return errors.New("article id is invalid")
 	}
 	return nil
 }

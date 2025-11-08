@@ -25,7 +25,8 @@ func GinLogger() gin.HandlerFunc {
 		c.Next()
 
 		cost := time.Since(start)
-		zap.L().Info(path,
+		zap.L().Info("http request info",
+			zap.String("path", path),
 			zap.Int("status", c.Writer.Status()),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),

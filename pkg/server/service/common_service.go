@@ -33,6 +33,11 @@ var (
 type commoneService struct {
 }
 
+// UploadImage 上传图片
+//
+//	文件相对路径：年/uuid.web
+//	文件存储路径：{ImgDataDir}/{文件相对路径}
+//	文件代理路径：ImgProxyURL/{文件相对路径}
 func (s *commoneService) UploadImage(ctx *gin.Context, file *multipart.FileHeader) (vo.UploadImageVo, error) {
 	var resp vo.UploadImageVo
 

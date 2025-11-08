@@ -11,6 +11,7 @@ type ArticleMeta struct {
 	TagsID              string `json:"tagsID"`              // 文章标签ID列表，用,隔开，每篇文章最多有5个标签
 	Author              string `json:"author"`              // 作者姓名或标识
 	AllowComment        bool   `json:"allowComment"`        // 是否允许评论，0表示不允许评论，1表示允许评论
+	Views               int    `json:"views"`               // 文章浏览量
 	Weight              int    `json:"weight"`              // 文章权重，默认初始值为0
 	IsSticky            bool   `json:"isSticky"`            // 是否置顶。0表示不置顶，1表示置顶。默认初始值为 0
 	IsOriginal          bool   `json:"isOriginal"`          // 原创/转载标识。0表示非原创，1表示原创。默认初始值为1，表示原创

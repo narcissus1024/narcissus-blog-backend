@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -110,6 +111,18 @@ func RunDBTransaction(c *gin.Context, fn func() error) error {
 func GetDBFromContext(c *gin.Context) *gorm.DB {
 	tx, dbExist := c.Get(DB_TRANSACTION_CONTEXT_KEY)
 	if !dbExist || tx == nil {
+		return Client
+	}
+	txDB, ok := tx.(*gorm.DB)
+	if !ok {
+		return Client
+	}
+	return txDB
+}
+
+func GetDBFromContext2(ctx context.Context) *gorm.DB {
+	tx := ctx.Value(DB_TRANSACTION_CONTEXT_KEY)
+	if tx == nil {
 		return Client
 	}
 	txDB, ok := tx.(*gorm.DB)
