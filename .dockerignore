@@ -1,0 +1,41 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# IDE and editor folders
+.idea
+.vscode
+
+# Log files
+log
+*.log
+
+# Build output
+bin
+output
+
+# Git
+.git
+.gitignore
+
+# Docker related files
+.dockerignore
+Dockerfile
+distribution/
+
+# Documentation
+README.md
+
+# Conf
+conf/conf_prod.yaml
+conf/private.pem
+conf/public.pem

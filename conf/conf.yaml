@@ -1,0 +1,22 @@
+app:
+  name: blog_narcissus
+  port: 9002
+  domain: 'localhost'
+  imgDataDir: /app/data/nginx/html/img
+  imgProxyURL: http://127.0.0.1:9001
+  privateKeyDir: /app/conf
+  publicKeyDir: /app/conf
+mysql:
+  user: root
+  password: admin
+  host: mysql
+  port: 3306
+  dbname: blog_narcissus
+redis:
+  host: redis
+  port: 6379
+  password: admin
+  db: 0
+logger:
+  logLevel: info
+  logFormat: logfmt

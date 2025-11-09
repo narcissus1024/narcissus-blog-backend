@@ -10,6 +10,9 @@ func Setup(gin *gin.Engine) {
 
 	g := gin.Group("")
 
+	// 健康检查路由
+	g.GET("/ping", handler.HealthHandler.Ping)
+
 	// 用户路由
 	userRoute := g.Group("/user")
 	{

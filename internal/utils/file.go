@@ -31,7 +31,7 @@ func ImageBytes2WebpBytes(input io.Reader, quality float32) ([]byte, error) {
 }
 
 func SaveFileBytes(data []byte, imagePath string) error {
-	if err := os.MkdirAll(filepath.Dir(imagePath), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(imagePath), 0755); err != nil {
 		return err
 	}
 	return os.WriteFile(imagePath, data, 0644)

@@ -1,0 +1,22 @@
+app:
+  name: blog_narcissus
+  port: {{BACKEND_PORT}}
+  domain: {{DOMAIN}}
+  imgDataDir: /app/data/nginx/html/img
+  imgProxyURL: {{IMG_PROXY_URL}}
+  privateKeyDir: /app/conf
+  publicKeyDir: /app/conf
+mysql:
+  user: root
+  password: {{MYSQL_PASSWORD}}
+  host: {{MYSQL_HOST}}
+  port: 3306
+  dbname: blog_narcissus
+redis:
+  host: {{REDIS_HOST}}
+  port: 6379
+  password: {{REDIS_PASSWORD}}
+  db: 0
+logger:
+  logLevel: info
+  logFormat: logfmt

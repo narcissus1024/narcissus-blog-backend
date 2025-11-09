@@ -16,3 +16,7 @@ upload:
 
 openapi:
   swag init -g ./cmd/blog/main.go -o docs
+
+db-model-generate:
+  # TODO
+  # "root:root@tcp(172.26.21.6:3306)/blog_narcissus?charset=utf8mb4&parseTime=true&loc=Local"

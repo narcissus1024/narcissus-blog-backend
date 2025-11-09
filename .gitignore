@@ -18,7 +18,12 @@ log
 
 conf/*
 !conf/conf_dev.yaml
+!conf/conf.yaml
+
+*.pem
 
 bin
 output
 
+distribution/install/.env
+distribution/release/*.tar.gz

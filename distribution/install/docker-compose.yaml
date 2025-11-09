@@ -1,0 +1,97 @@
+services:
+  # 前端服务
+  frontend:
+    image: "${REPO}/${FRONTEND_IMAGE_NAME}:${FRONTEND_IMAGE_TAG}"
+    ports:
+      - "${FRONTEND_MAP_PORT}:${FRONTEND_PORT}"
+    volumes:
+      - ${NGINX_CONF_FILE}:/etc/nginx/nginx.conf
+      - ${NGINX_CONF_D}:/etc/nginx/conf.d
+      - ${NGINX_LOG_DIR}:/var/log/nginx
+      - ${SSL_CERT_DIR}:/etc/nginx/ssl
+      - img-data:/app/data/nginx/html/img
+    networks:
+      - network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+
+  # 后端服务
+  backend:
+    image: "${REPO}/${BACKEND_IMAGE_NAME}:${BACKEND_IMAGE_TAG}"
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ${BACKEND_CONF_DIR}:/app/conf
+      - img-data:/app/data/nginx/html/img
+    networks:
+      - network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0.42
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ${MYSQL_CONF_DIR}/my.cnf:/etc/mysql/my.cnf
+      - mysql-data:/var/lib/mysql
+      - ${MYSQL_CONF_DIR}/sql.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - network
+    secrets:
+      - mysql_root_password
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h localhost -u root -p$$(cat /run/secrets/mysql_root_password) -e 'show databases;' | grep blog_narcissus"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7.4.2
+    command: sh -c "exec redis-server /etc/redis/redis.conf --requirepass \"$(cat /run/secrets/redis_password)\""
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${REDIS_CONF_DIR}/redis.conf:/etc/redis/redis.conf
+      - redis-data:/data
+    networks:
+      - network
+    secrets:
+      - redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  mysql-data:
+  redis-data:
+  img-data:
+
+secrets:
+  mysql_root_password:
+    file: ${SECRETS_DIR}/mysql_root_password
+  redis_password:
+    file: ${SECRETS_DIR}/redis_password
+
+networks:
+  network:
+    driver: bridge
