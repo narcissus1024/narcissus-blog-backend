@@ -18,14 +18,15 @@ Narcissus Blog 是一个基于 GO和VUE 开发的博客系统，包含前端、�
 您可以直接从 GitHub Releases 页面下载安装包，然后解压并使用安装脚本：
 
 ```bash
-# 下载最新版本的安装包（替换 VERSION 为实际版本号，如 v1.0.0）
-wget https://github.com/narcissus1024/narcissus-blog/releases/download/VERSION/narcissus-blog-VERSION.tar.gz
+# 下载最新版本安装包（替换 v0.0.0 为实际版本号，如 v1.0.0）
+wget https://github.com/narcissus1024/narcissus-blog-backend/releases/download/v0.0.0/narcissus-blog-v0.0.0.tar.gz
+
 
 # 解压安装包
-tar -xzf narcissus-blog-VERSION.tar.gz
+tar -xzf narcissus-blog-v0.0.0.tar.gz
 
 # 进入解压后的目录
-cd narcissus-blog-VERSION
+cd narcissus-blog-v0.0.0
 
 # 运行安装脚本
 ./install/install.sh
